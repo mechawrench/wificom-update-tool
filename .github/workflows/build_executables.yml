@@ -1,0 +1,85 @@
+name: Build Executables
+
+on:
+  push:
+  pull_request:
+  release:
+    types:
+      - created
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.4.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v3.1.0
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pyinstaller
+
+      - name: Build macOS Launcher Script
+        if: runner.os == 'macOS'
+        run: |
+          echo '#!/bin/bash' > wificom-update-installer.command
+          echo 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"' >> wificom-update-installer.command
+          echo 'cd "$SCRIPT_DIR"' >> wificom-update-installer.command
+          echo 'python -m pip install --upgrade pip' >> wificom-update-installer.command
+          echo 'pip install -r requirements.txt' >> wificom-update-installer.command
+          echo 'python "run.py"' >> wificom-update-installer.command
+          chmod +x wificom-update-installer.command
+          mkdir macos-package
+          cp wificom-update-installer.command macos-package/
+          cp run.py macos-package/
+          cp requirements.txt macos-package/
+          zip -r macos-wificom-update-installer.zip macos-package/
+
+      - name: Build Windows and Linux Executable
+        if: runner.os != 'macOS'
+        run: |
+          pip install pyinstaller
+          pyinstaller --onefile --hidden-import=queue --name wificom-update-installer run.py
+
+      - name: Rename executables
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            mv dist/wificom-update-installer.exe  windows-wificom-update-installer.exe
+          fi
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            mv dist/wificom-update-installer  linux-wificom-update-installer
+          fi
+
+      - name: Upload as Build Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: WiFiCom-Update-Installer-${{ runner.os }}
+          path: |
+            windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
+            linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
+            macos-wificom-update-installer.zip
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
+            linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
+            macos-wificom-update-installer.zip
+
