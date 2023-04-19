@@ -15,7 +15,7 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        os: [ubuntu-18.04, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - name: Checkout
@@ -82,4 +82,42 @@ jobs:
             windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
             linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
             macos-wificom-update-installer.zip
+  build-linux-glibc:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:buster
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.4.2
+
+      - name: Set up Python
+        run: |
+          apt-get update
+          apt-get install -y python3 python3-pip
+          python3 -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pyinstaller
+
+      - name: Build Linux Executable with lower glibc
+        run: |
+          pyinstaller --onefile --hidden-import=queue --name wificom-update-installer-glibc228 run.py
+          mv dist/wificom-update-installer-glibc228  linux-wificom-update-installer-glibc228
+
+      - name: Upload as Build Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: WiFiCom-Update-Installer-Linux-glibc228
+          path: linux-wificom-update-installer-glibc228
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: linux-wificom-update-installer-glibc228
 
