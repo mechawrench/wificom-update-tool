@@ -42,7 +42,9 @@ print(intro)
 
 def get_circuitpy_drive():
     if os.name == 'posix':
-        return '/Volumes/CIRCUITPY'
+        posix_drive_path = '/Volumes/CIRCUITPY'
+        if os.path.exists(posix_drive_path):
+            return posix_drive_path
     elif os.name == 'nt':
         kernel32 = ctypes.windll.kernel32
         volume_name_buf = ctypes.create_unicode_buffer(1024)
@@ -118,19 +120,21 @@ for index, release in enumerate(valid_releases):
     print(f"{index + 1}. {release['version']} - {release['name']}")
 
 selected_release = int(input("\nSelect a release number to install: ")) - 1
+selected_release_name = valid_releases[selected_release]['name']
 selected_release_version = valid_releases[selected_release]['version']
 release_notes = valid_releases[selected_release]['notes']
 
 tested_circuitpython_version = extract_tested_circuitpython_version(release_notes)
 circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
 
-if circuitpython_version is None:
-    print(f"\nWarning: boot_out.txt not found. Skipping CircuitPython version validation.  Please make sure you are using the correct version (CircuitPython {tested_circuitpython_version}).")
-    print(f"Download the tested CircuitPython version here: \n https://circuitpython.org/board/raspberry_pi_pico_w/en/{tested_circuitpython_version}\n")
-elif tested_circuitpython_version != circuitpython_version:
-    print(f"\nThe CircuitPython version on your device ({circuitpython_version}) does not match the tested version ({tested_circuitpython_version}).")
-    print(f"Download the tested CircuitPython version here: \n https://circuitpython.org/board/raspberry_pi_pico_w/en/{tested_circuitpython_version}\n")
-    input("Press Enter to continue (not recommended) or Ctrl+C to exit...")
+if tested_circuitpython_version != circuitpython_version:
+    if selected_release_name.endswith("nina.zip"):
+        download_link = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-{tested_circuitpython_version}.uf2"
+    elif selected_release_name.endswith("picow.zip"):
+        download_link = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/raspberry_pi_pico_w/en_US/adafruit-circuitpython-raspberry_pi_pico_w-en_US-{tested_circuitpython_version}.uf2"
+
+    print(f"Download the tested CircuitPython version here: \n {download_link}\n")
+    input("Press Enter to exit...")
     sys.exit()
 
 temp_directory = tempfile.mkdtemp()
