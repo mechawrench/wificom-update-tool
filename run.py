@@ -9,6 +9,7 @@ import ctypes
 import string
 import sys
 import re
+import hashlib
 
 def get_readme_content(version):
     api_url = f"https://api.github.com/repos/mechawrench/wificom-lib/contents/README.md?ref={version}"
@@ -58,27 +59,24 @@ def is_drive_writable(drive_path):
     return os.access(drive_path, os.W_OK)
 
 def get_valid_releases():
-    valid_releases = []
-    added_assets = set()
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
     releases = requests.get(api_url).json()
 
+    latest_release = None
+    latest_pre_release = None
+
     for release in releases:
-        if len(release['assets']) == 2:  # Add this condition to check if there are exactly two assets
-            for asset in release['assets']:
-                if (asset['name'].startswith("wificom-lib") and asset['name'].endswith(".zip") and
-                        asset['content_type'] == 'application/zip' and asset['name'] not in added_assets):
+        if release['prerelease']:
+            if latest_pre_release is None:
+                latest_pre_release = release
+        elif latest_release is None:
+            latest_release = release
 
-                    valid_releases.append({
-                        'url': asset['browser_download_url'],
-                        'name': asset['name'],
-                        'version': release['tag_name'],
-                        'notes': release['body']
-                    })
+        if latest_release is not None and latest_pre_release is not None:
+            break
 
-                    added_assets.add(asset['name'])
+    return latest_release, latest_pre_release
 
-    return valid_releases
 
 def extract_tested_circuitpython_version(release_notes):
     tested_with = re.search(r"Tested with.*?- CircuitPython (\d+\.\d+\.\d+)", release_notes, re.DOTALL)
@@ -115,19 +113,95 @@ if not is_drive_writable(destination_folder):
 
 valid_releases = get_valid_releases()
 
-print("Available releases:")
-for index, release in enumerate(valid_releases):
-    print(f"{index + 1}. {release['version']} - {release['name']}")
 
-selected_release = int(input("\nSelect a release number to install: ")) - 1
-selected_release_name = valid_releases[selected_release]['name']
-selected_release_version = valid_releases[selected_release]['version']
-release_notes = valid_releases[selected_release]['notes']
+def download_archive(url, save_path):
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
 
-tested_circuitpython_version = extract_tested_circuitpython_version(release_notes)
+    with open(save_path, "wb") as file:
+        for chunk in response.iter_content(chunk_size=8192):
+            file.write(chunk)
+
+    print(f"Downloaded archive to: {save_path}")
+
+def get_download_url_from_commit_hash(commit_hash):
+    bucket_name = 'wificom-lib'
+    zip_filename = f"wificom-lib_{commit_hash}_picow.zip"
+    key = f"archives/{zip_filename}"
+    zip_url = f"https://{bucket_name}.s3.amazonaws.com/{key}"
+
+    try:
+        response = requests.head(zip_url)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print("Commit zip file not found - please try another next time.")
+        sys.exit()
+
+    return zip_url
+
+def version_tuple(version_str):
+    version_str = version_str.lstrip('v').split('-')[0]
+    return tuple(map(int, (version_str.split("."))))
+
+def compare_versions(version1, version2):
+    return version_tuple(version1) >= version_tuple(version2)
+
+def get_all_releases():
+    min_version = "0.9.0"
+    api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
+    releases = requests.get(api_url).json()
+    
+    version_regex = re.compile(r"^v?\d+(\.\d+)*(-[a-zA-Z0-9]+)?$")
+    valid_releases = [release for release in releases if version_regex.match(release['tag_name']) and compare_versions(release['tag_name'], min_version)]
+
+    return valid_releases
+
+
+def choose_release(releases):
+    print("\nAvailable releases:")
+    for i, release in enumerate(releases):
+        print(f"{i + 1}. {release['tag_name']} ({'Pre-release' if release['prerelease'] else 'Release'})")
+    print("\n")
+    selected_index = int(input("Select a release: ")) - 1
+    return releases[selected_index]
+
+# ...
+
+print("Available options:")
+print("1. Latest Release")
+print("2. Install from a specific release")
+print("3. Install from commit hash")
+
+selected_option = int(input("\nSelect an option: "))
+
+all_releases = get_all_releases()
+
+if selected_option == 1:
+    latest_release, latest_pre_release = valid_releases
+    selected_release = latest_release
+elif selected_option == 2:
+    selected_release = choose_release(all_releases)
+elif selected_option == 3:
+    commit_hash = input("Enter the commit hash: ")
+    selected_release_version = commit_hash
+    selected_release_name = f"wificom-lib_{commit_hash}"
+    download_url = get_download_url_from_commit_hash(commit_hash)
+    tested_circuitpython_version = None
+else:
+    print("Invalid option selected.")
+    sys.exit()
+
+if selected_option != 3:
+    selected_release_name = selected_release['name'].replace('/', '_')
+    selected_release_version = selected_release['tag_name']
+    release_notes = selected_release['body']
+    download_url = selected_release['assets'][0]['browser_download_url']
+    tested_circuitpython_version = extract_tested_circuitpython_version(release_notes)
+
+
 circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
 
-if tested_circuitpython_version != circuitpython_version:
+if tested_circuitpython_version != None and tested_circuitpython_version != circuitpython_version:
     if selected_release_name.endswith("nina.zip"):
         download_link = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-{tested_circuitpython_version}.uf2"
     elif selected_release_name.endswith("picow.zip"):
@@ -139,9 +213,9 @@ if tested_circuitpython_version != circuitpython_version:
 
 temp_directory = tempfile.mkdtemp()
 
-urlretrieve(valid_releases[selected_release]['url'], os.path.join(temp_directory, valid_releases[selected_release]['name']))
+urlretrieve(download_url, os.path.join(temp_directory, selected_release_name))
 
-with zipfile.ZipFile(os.path.join(temp_directory, valid_releases[selected_release]['name']), 'r') as zip_ref:
+with zipfile.ZipFile(os.path.join(temp_directory, selected_release_name), 'r') as zip_ref:
     extract_path = os.path.join(temp_directory, "extracted")
     zip_ref.extractall(extract_path)
 
