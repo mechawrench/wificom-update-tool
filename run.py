@@ -99,7 +99,17 @@ def extract_tested_circuitpython_version(release_notes):
     return valid_releases
 
 def is_drive_writable(drive_path):
-    return os.access(drive_path, os.W_OK)
+    if os.name == 'nt':
+        try:
+            test_file = os.path.join(drive_path, 'test.txt')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            return True
+        except PermissionError:
+            return False
+    else:
+        return os.access(drive_path, os.W_OK)
 
 destination_folder = get_circuitpy_drive()
 
