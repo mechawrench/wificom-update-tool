@@ -30,7 +30,7 @@ def read_circuitpython_version_from_boot_out(drive_path):
 
 os.system('cls' if os.name == 'nt' else 'clear')
 intro = '''\033[32m
-Welcome to the WiFiCom Update Installer
+Welcome to the WiFiCom Update/Installer Tool!
 
 This script will help you update your WiFiCom by downloading the
 latest version of the wificom-lib and updating the files on the
@@ -98,6 +98,9 @@ def extract_tested_circuitpython_version(release_notes):
     
     return valid_releases
 
+def is_drive_writable(drive_path):
+    return os.access(drive_path, os.W_OK)
+
 destination_folder = get_circuitpy_drive()
 
 if destination_folder is None:
@@ -112,7 +115,6 @@ if not is_drive_writable(destination_folder):
     sys.exit()
 
 valid_releases = get_valid_releases()
-
 
 def download_archive(url, save_path):
     response = requests.get(url, stream=True)
