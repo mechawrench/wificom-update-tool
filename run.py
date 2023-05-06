@@ -185,21 +185,6 @@ selected_option = int(input("\nSelect an option: "))
 
 all_releases = get_all_releases()
 
-if selected_option == 1:
-    latest_release, latest_pre_release = valid_releases
-    selected_release = latest_release
-elif selected_option == 2:
-    selected_release = choose_release(all_releases)
-elif selected_option == 3:
-    commit_hash = input("Enter the commit hash: ")
-    selected_release_version = commit_hash
-    selected_release_name = f"wificom-lib_{commit_hash}"
-    download_url = get_download_url_from_commit_hash(commit_hash)
-    tested_circuitpython_version = None
-else:
-    print("Invalid option selected.")
-    sys.exit()
-
 def prompt_for_device_type():
     print("Select your device type:")
     print("1. Arduino Nano RP2040 Connect (NINA)")
@@ -214,6 +199,21 @@ def prompt_for_device_type():
         sys.exit()
 
 device_type = prompt_for_device_type()
+
+if selected_option == 1:
+    latest_release, latest_pre_release = valid_releases
+    selected_release = latest_release
+elif selected_option == 2:
+    selected_release = choose_release(all_releases)
+elif selected_option == 3:
+    commit_hash = input("Enter the commit hash: ")
+    selected_release_version = commit_hash
+    selected_release_name = f"wificom-lib_{commit_hash}"
+    download_url = get_download_url_from_commit_hash(commit_hash, device_type)
+    tested_circuitpython_version = None
+else:
+    print("Invalid option selected.")
+    sys.exit()
 
 if selected_option != 3:
     selected_release_name = selected_release['name'].replace('/', '_')
