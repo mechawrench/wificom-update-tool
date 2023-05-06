@@ -77,7 +77,6 @@ def get_valid_releases():
 
     return latest_release, latest_pre_release
 
-
 def extract_tested_circuitpython_version(release_notes):
     tested_with = re.search(r"Tested with.*?- CircuitPython (\d+\.\d+\.\d+)", release_notes, re.DOTALL)
     if tested_with:
@@ -136,9 +135,10 @@ def download_archive(url, save_path):
 
     print(f"Downloaded archive to: {save_path}")
 
-def get_download_url_from_commit_hash(commit_hash):
+def get_download_url_from_commit_hash(commit_hash, device_type):
     bucket_name = 'wificom-lib'
-    zip_filename = f"wificom-lib_{commit_hash}_picow.zip"
+    device_suffix = '_picow.zip' if device_type == 'raspberry_pi_pico_w' else '_nina.zip'
+    zip_filename = f"wificom-lib_{commit_hash}{device_suffix}"
     key = f"archives/{zip_filename}"
     zip_url = f"https://{bucket_name}.s3.amazonaws.com/{key}"
 
@@ -168,7 +168,6 @@ def get_all_releases():
 
     return valid_releases
 
-
 def choose_release(releases):
     print("\nAvailable releases:")
     for i, release in enumerate(releases):
@@ -176,8 +175,6 @@ def choose_release(releases):
     print("\n")
     selected_index = int(input("Select a release: ")) - 1
     return releases[selected_index]
-
-# ...
 
 print("Available options:")
 print("1. Latest Release")
@@ -203,17 +200,33 @@ else:
     print("Invalid option selected.")
     sys.exit()
 
+def prompt_for_device_type():
+    print("Select your device type:")
+    print("1. Arduino Nano RP2040 Connect (NINA)")
+    print("2. Raspberry Pi Pico W (PICOW)")
+    choice = int(input("\nEnter your choice (1 or 2): "))
+    if choice == 1:
+        return "arduino_nano_rp2040_connect"
+    elif choice == 2:
+        return "raspberry_pi_pico_w"
+    else:
+        print("Invalid choice. Exiting...")
+        sys.exit()
+
+device_type = prompt_for_device_type()
+
 if selected_option != 3:
     selected_release_name = selected_release['name'].replace('/', '_')
     selected_release_version = selected_release['tag_name']
     release_notes = selected_release['body']
-    download_url = selected_release['assets'][0]['browser_download_url']
+    asset_index = 1 if device_type == 'raspberry_pi_pico_w' else 0
+    download_url = selected_release['assets'][asset_index]['browser_download_url']
     tested_circuitpython_version = extract_tested_circuitpython_version(release_notes)
-
 
 circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
 
 if tested_circuitpython_version != None and tested_circuitpython_version != circuitpython_version:
+    download_link = None
     if selected_release_name.endswith("nina.zip"):
         download_link = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-{tested_circuitpython_version}.uf2"
     elif selected_release_name.endswith("picow.zip"):
@@ -234,7 +247,6 @@ with zipfile.ZipFile(os.path.join(temp_directory, selected_release_name), 'r') a
 source_folder = extract_path
 
 def delete_untracked_files(source_folder, destination_folder):
-    skip_files = {'secrets.py', 'config.py', 'board_config.py', 'boot_out.txt'}
     archive_files = set()
     for root, dirs, files in os.walk(source_folder):
         for file in files:
@@ -242,17 +254,18 @@ def delete_untracked_files(source_folder, destination_folder):
     destination_files = set()
     for root, dirs, files in os.walk(destination_folder):
         for file in files:
-            if file not in skip_files:
-                abs_path = os.path.join(root, file)
-                destination_files.add(os.path.relpath(abs_path, destination_folder))
+            abs_path = os.path.join(root, file)
+            destination_files.add(os.path.relpath(abs_path, destination_folder))
 
     untracked_files = destination_files - archive_files
     for file in untracked_files:
         abs_path = os.path.join(destination_folder, file)
-        try:
-            os.remove(abs_path)
-        except FileNotFoundError:
-            pass
+        file_directory = os.path.dirname(file)
+        if file_directory == 'lib':
+            try:
+                os.remove(abs_path)
+            except FileNotFoundError:
+                pass
 
 delete_untracked_files(source_folder, destination_folder)
 
