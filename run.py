@@ -221,19 +221,6 @@ selected_option = int(input("\nSelect an option: "))
 
 all_releases = get_all_releases()
 
-# def prompt_for_device_type():
-#     print("Select your device type:")
-#     print("1. Arduino Nano RP2040 Connect (NINA)")
-#     print("2. Raspberry Pi Pico W (PICOW)")
-#     choice = int(input("\nEnter your choice (1 or 2): "))
-#     if choice == 1:
-#         return "arduino_nano_rp2040_connect"
-#     elif choice == 2:
-#         return "raspberry_pi_pico_w"
-#     else:
-#         print("Invalid choice. Exiting...")
-#         sys.exit()
-
 circuitpy_drive = get_circuitpy_drive()
 if circuitpy_drive is None:
     print("CIRCUITPY drive not found. Exiting...")
