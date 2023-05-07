@@ -28,6 +28,21 @@ def read_circuitpython_version_from_boot_out(drive_path):
         pass
     return None
 
+def read_board_info(file_path: str) -> str:
+    with open(file_path, 'r') as file:
+        return file.read()
+
+def extract_board_id(board_info: str):
+    # Extract board ID using regular expression
+    board_id_search = re.search(r'Board ID:(.+)', board_info)
+    
+    if board_id_search:
+        board_id = board_id_search.group(1).strip()
+        return board_id
+    else:
+        print("Board ID not found. Exiting...")
+        sys.exit()
+
 os.system('cls' if os.name == 'nt' else 'clear')
 intro = '''\033[32m
 Welcome to the WiFiCom Update/Installer Tool!
@@ -135,6 +150,12 @@ def download_archive(url, save_path):
 
     print(f"Downloaded archive to: {save_path}")
 
+def get_latest_commit_hash():
+    api_url = "https://api.github.com/repos/mechawrench/wificom-lib/commits"
+    response = requests.get(api_url).json()
+    latest_commit_hash = response[0]['sha']
+    return latest_commit_hash
+
 def get_download_url_from_commit_hash(commit_hash, device_type):
     bucket_name = 'wificom-lib'
     device_suffix = '_picow.zip' if device_type == 'raspberry_pi_pico_w' else '_nina.zip'
@@ -168,6 +189,20 @@ def get_all_releases():
 
     return valid_releases
 
+def save_installed_commit_hash(commit_hash, destination_folder):
+    installed_version_file = os.path.join(destination_folder, 'wificom_installed_version.txt')
+    with open(installed_version_file, 'w') as f:
+        f.write(commit_hash)
+
+def extract_device_type(board_id: str):
+    if 'arduino_nano_rp2040_connect' in board_id:
+        return 'arduino_nano_rp2040_connect'
+    elif 'raspberry_pi_pico_w' in board_id:
+        return 'raspberry_pi_pico_w'
+    else:
+        print("Invalid board ID. Exiting...")
+        sys.exit()
+
 def choose_release(releases):
     print("\nAvailable releases:")
     for i, release in enumerate(releases):
@@ -177,28 +212,38 @@ def choose_release(releases):
     return releases[selected_index]
 
 print("Available options:")
-print("1. Latest Release")
-print("2. Install from a specific release")
-print("3. Install from commit hash")
+print("1. Install or Update to Latest release")
+print("2. Install or Update to a specific release")
+print("3. Install or Update from the latest commit hash")
+print("4. Install or Update from your chosen commit hash")
 
 selected_option = int(input("\nSelect an option: "))
 
 all_releases = get_all_releases()
 
-def prompt_for_device_type():
-    print("Select your device type:")
-    print("1. Arduino Nano RP2040 Connect (NINA)")
-    print("2. Raspberry Pi Pico W (PICOW)")
-    choice = int(input("\nEnter your choice (1 or 2): "))
-    if choice == 1:
-        return "arduino_nano_rp2040_connect"
-    elif choice == 2:
-        return "raspberry_pi_pico_w"
-    else:
-        print("Invalid choice. Exiting...")
-        sys.exit()
+# def prompt_for_device_type():
+#     print("Select your device type:")
+#     print("1. Arduino Nano RP2040 Connect (NINA)")
+#     print("2. Raspberry Pi Pico W (PICOW)")
+#     choice = int(input("\nEnter your choice (1 or 2): "))
+#     if choice == 1:
+#         return "arduino_nano_rp2040_connect"
+#     elif choice == 2:
+#         return "raspberry_pi_pico_w"
+#     else:
+#         print("Invalid choice. Exiting...")
+#         sys.exit()
 
-device_type = prompt_for_device_type()
+circuitpy_drive = get_circuitpy_drive()
+if circuitpy_drive is None:
+    print("CIRCUITPY drive not found. Exiting...")
+    sys.exit()
+
+boot_out_path = os.path.join(circuitpy_drive, "boot_out.txt")
+board_info = read_board_info(boot_out_path)
+board_id = extract_board_id(board_info)
+device_type = extract_device_type(board_id)
+# device_type = prompt_for_device_type()
 
 if selected_option == 1:
     latest_release, latest_pre_release = valid_releases
@@ -206,6 +251,12 @@ if selected_option == 1:
 elif selected_option == 2:
     selected_release = choose_release(all_releases)
 elif selected_option == 3:
+    latest_commit_hash = get_latest_commit_hash()
+    selected_release_version = latest_commit_hash
+    selected_release_name = f"wificom-lib_{latest_commit_hash}"
+    download_url = get_download_url_from_commit_hash(latest_commit_hash, device_type)
+    tested_circuitpython_version = None
+elif selected_option == 4:
     commit_hash = input("Enter the commit hash: ")
     selected_release_version = commit_hash
     selected_release_name = f"wificom-lib_{commit_hash}"
@@ -215,7 +266,7 @@ else:
     print("Invalid option selected.")
     sys.exit()
 
-if selected_option != 3:
+if selected_option != 3 and selected_option != 4:
     selected_release_name = selected_release['name'].replace('/', '_')
     selected_release_version = selected_release['tag_name']
     release_notes = selected_release['body']
@@ -291,6 +342,9 @@ for root, dirs, files in os.walk(source_folder):
         shutil.copy(source_path, destination_path)
 
 shutil.rmtree(temp_directory)
+
+# Add the following line to save the commit hash:
+save_installed_commit_hash(selected_release_version, destination_folder)
 
 success = '''\033[32m
 Successfully Installed/Updated your WiFiCom!  Please eject the drive and restart your device.
