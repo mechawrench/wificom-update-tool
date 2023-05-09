@@ -283,6 +283,7 @@ with zipfile.ZipFile(os.path.join(temp_directory, selected_release_name), 'r') a
     zip_ref.extractall(extract_path)
 
 source_folder = extract_path
+skip_files = ['secrets.py', 'config.py', 'board_config.py', 'boot_out.txt']
 
 def delete_untracked_files(source_folder, destination_folder):
     archive_files = set()
@@ -292,18 +293,22 @@ def delete_untracked_files(source_folder, destination_folder):
     destination_files = set()
     for root, dirs, files in os.walk(destination_folder):
         for file in files:
-            abs_path = os.path.join(root, file)
-            destination_files.add(os.path.relpath(abs_path, destination_folder))
+            if file not in skip_files:
+                abs_path = os.path.join(root, file)
+                destination_files.add(os.path.relpath(abs_path, destination_folder))
+            else:
+                print(f"Skipping file: {file}")
 
     untracked_files = destination_files - archive_files
     for file in untracked_files:
-        abs_path = os.path.join(destination_folder, file)
-        file_directory = os.path.dirname(file)
-        if file_directory == 'lib':
-            try:
-                os.remove(abs_path)
-            except FileNotFoundError:
-                pass
+        if file not in skip_files:  # Add this line to prevent deletion of skipped files
+            abs_path = os.path.join(destination_folder, file)
+            file_directory = os.path.dirname(file)
+            if file_directory == 'lib':
+                try:
+                    os.remove(abs_path)
+                except FileNotFoundError:
+                    pass
 
 delete_untracked_files(source_folder, destination_folder)
 
@@ -321,12 +326,13 @@ for root, dirs, files in os.walk(source_folder):
     dirs[:] = [d for d in dirs if not (d.startswith('.') and d != 'lib')]
     
     for file in files:
-        source_path = os.path.join(root, file)
-        relative_path = os.path.relpath(source_path, source_folder)
-        destination_path = os.path.join(destination_folder, relative_path)
+        if file not in skip_files:
+            source_path = os.path.join(root, file)
+            relative_path = os.path.relpath(source_path, source_folder)
+            destination_path = os.path.join(destination_folder, relative_path)
 
-        os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-        shutil.copy(source_path, destination_path)
+            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+            shutil.copy(source_path, destination_path)
 
 shutil.rmtree(temp_directory)
 
