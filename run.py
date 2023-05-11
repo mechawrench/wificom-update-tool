@@ -1,15 +1,15 @@
-import os
-import shutil
-import hashlib
-import tempfile
-import zipfile
-from urllib.request import urlretrieve
-import requests
 import ctypes
+import hashlib
+import json
+import os
+import re
+import requests
+import shutil
 import string
 import sys
-import re
-import hashlib
+import tempfile
+from urllib.request import urlretrieve
+import zipfile
 
 def get_readme_content(version):
     api_url = f"https://api.github.com/repos/mechawrench/wificom-lib/contents/README.md?ref={version}"
@@ -42,19 +42,6 @@ def extract_board_id(board_info: str):
     else:
         print("Board ID not found. Exiting...")
         sys.exit()
-
-os.system('cls' if os.name == 'nt' else 'clear')
-intro = '''\033[32m
-Welcome to the WiFiCom Update/Installer Tool!
-
-This script will help you update your WiFiCom by downloading the
-latest version of the wificom-lib and updating the files on the
-CIRCUITPY drive. Keep in mind that your own files (secrets.py,
-config.py, and board_config.py) will not be affected.
-
-Let's get started!
-\033[0m'''
-print(intro)
 
 def get_circuitpy_drive():
     if os.name == 'posix':
@@ -92,26 +79,6 @@ def get_valid_releases():
 
     return latest_release, latest_pre_release
 
-def extract_tested_circuitpython_version(release_notes):
-    tested_with = re.search(r"Tested with.*?- CircuitPython (\d+\.\d+\.\d+)", release_notes, re.DOTALL)
-    if tested_with:
-        return tested_with.group(1)
-    return None
-    valid_releases = []
-    api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
-    releases = requests.get(api_url).json()
-    
-    for release in releases:
-        for asset in release['assets']:
-            if asset['name'].startswith("wificom-lib") and asset['name'].endswith(".zip") and asset['content_type'] == 'application/zip':
-                valid_releases.append({
-                    'url': asset['browser_download_url'],
-                    'name': asset['name'],
-                    'version': release['tag_name']
-                })
-    
-    return valid_releases
-
 def is_drive_writable(drive_path):
     if os.name == 'nt':
         try:
@@ -125,20 +92,21 @@ def is_drive_writable(drive_path):
     else:
         return os.access(drive_path, os.W_OK)
 
-destination_folder = get_circuitpy_drive()
+def delete_folders_in_lib(destination_folder, lib_folders_to_delete):
+    lib_path = os.path.join(destination_folder, "lib")
+    for folder in lib_folders_to_delete:
+        folder_path = os.path.join(lib_path, folder)
+        if os.path.exists(folder_path) and os.path.isdir(folder_path):
+            shutil.rmtree(folder_path)
 
-if destination_folder is None:
-    print("CIRCUITPY drive not found")
-    input("Press Enter to exit...")
-    sys.exit()
-
-if not is_drive_writable(destination_folder):
-    print("The CIRCUITPY drive is read-only.")
-    print("Please enter drive mode and restart the program.")
-    input("Press Enter to exit...")
-    sys.exit()
-
-valid_releases = get_valid_releases()
+def get_folders_in_lib(zip_file_path):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        lib_folders = set()
+        for file_info in zip_ref.infolist():
+            if file_info.filename.startswith("lib/") and file_info.is_dir():
+                folder_name = file_info.filename.split('/')[1]
+                lib_folders.add(folder_name)
+        return lib_folders
 
 def download_archive(url, save_path):
     response = requests.get(url, stream=True)
@@ -148,18 +116,41 @@ def download_archive(url, save_path):
         for chunk in response.iter_content(chunk_size=8192):
             file.write(chunk)
 
-    print(f"Downloaded archive to: {save_path}")
+    return save_path
 
-def get_latest_commit_hash():
+def get_recommended_circuitpython_version(sources_json_path, board_id, device_type):
+    with open(sources_json_path, 'r') as f:
+        sources = json.load(f)
+
+    recommended_version = sources['circuitpython'].get('picow' if device_type == 'raspberry_pi_pico_w' else 'nina')
+    return recommended_version
+
+def get_latest_commit():
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/commits"
     response = requests.get(api_url).json()
     latest_commit_hash = response[0]['sha']
-    return latest_commit_hash
+    return latest_commit_hash, response[0]
 
-def get_download_url_from_commit_hash(commit_hash, device_type):
+def get_specific_commit(commit_hash):
+    api_url = "https://api.github.com/repos/mechawrench/wificom-lib/commits/" + commit_hash
+    response = requests.get(api_url).json()
+    latest_commit_hash = response
+    return latest_commit_hash, response
+
+def get_resource_identifier(resource):
+    if 'sha' in resource:
+        return resource['sha']
+    elif 'name' in resource:
+        return resource['name']
+    else:
+        return 'default_value'
+
+def get_download_url_from_commit_hash(resource, device_type):
     bucket_name = 'wificom-lib'
     device_suffix = '_picow.zip' if device_type == 'raspberry_pi_pico_w' else '_nina.zip'
-    zip_filename = f"wificom-lib_{commit_hash}{device_suffix}"
+
+    zip_filename =  bucket_name + '_' + get_resource_identifier(resource) + device_suffix
+
     key = f"archives/{zip_filename}"
     zip_url = f"https://{bucket_name}.s3.amazonaws.com/{key}"
 
@@ -202,6 +193,10 @@ def extract_device_type(board_id: str):
     else:
         print("Invalid board ID. Exiting...")
         sys.exit()
+        
+def extract_sources_json(zip_file_path, extract_path):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extract("sources.json", extract_path)
 
 def choose_release(releases):
     print("\nAvailable releases:")
@@ -211,140 +206,192 @@ def choose_release(releases):
     selected_index = int(input("Select a release: ")) - 1
     return releases[selected_index]
 
-print("Available options:")
-print("1. Install or Update to Latest release")
-print("2. Install or Update to a specific release")
-print("3. Install or Update from the latest commit hash")
-print("4. Install or Update from your chosen commit hash")
+def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version):
+    with open(sources_json_path, 'r') as f:
+        sources = json.load(f)
+    
+    if 'circuitpython' not in sources:
+        print("\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
+        print("Please check on Discord/GitHub for a recommended version.")
+        decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
+        
+        if decision != 'yes':
+            sys.exit()
+    else:
+        recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id, device_type)
 
-selected_option = int(input("\nSelect an option: "))
-
-all_releases = get_all_releases()
-
-circuitpy_drive = get_circuitpy_drive()
-if circuitpy_drive is None:
-    print("CIRCUITPY drive not found. Exiting...")
-    sys.exit()
-
-boot_out_path = os.path.join(circuitpy_drive, "boot_out.txt")
-board_info = read_board_info(boot_out_path)
-board_id = extract_board_id(board_info)
-device_type = extract_device_type(board_id)
-# device_type = prompt_for_device_type()
-
-if selected_option == 1:
-    latest_release, latest_pre_release = valid_releases
-    selected_release = latest_release
-elif selected_option == 2:
-    selected_release = choose_release(all_releases)
-elif selected_option == 3:
-    latest_commit_hash = get_latest_commit_hash()
-    selected_release_version = latest_commit_hash
-    selected_release_name = f"wificom-lib_{latest_commit_hash}"
-    download_url = get_download_url_from_commit_hash(latest_commit_hash, device_type)
-    tested_circuitpython_version = None
-elif selected_option == 4:
-    commit_hash = input("Enter the commit hash: ")
-    selected_release_version = commit_hash
-    selected_release_name = f"wificom-lib_{commit_hash}"
-    download_url = get_download_url_from_commit_hash(commit_hash, device_type)
-    tested_circuitpython_version = None
-else:
-    print("Invalid option selected.")
-    sys.exit()
-
-if selected_option != 3 and selected_option != 4:
-    selected_release_name = selected_release['name'].replace('/', '_')
-    selected_release_version = selected_release['tag_name']
-    release_notes = selected_release['body']
-    asset_index = 1 if device_type == 'raspberry_pi_pico_w' else 0
-    download_url = selected_release['assets'][asset_index]['browser_download_url']
-    tested_circuitpython_version = extract_tested_circuitpython_version(release_notes)
-
-circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
-
-if tested_circuitpython_version != None and tested_circuitpython_version != circuitpython_version:
-    download_link = None
-    if selected_release_name.endswith("nina.zip"):
-        download_link = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-{tested_circuitpython_version}.uf2"
-    elif selected_release_name.endswith("picow.zip"):
-        download_link = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/raspberry_pi_pico_w/en_US/adafruit-circuitpython-raspberry_pi_pico_w-en_US-{tested_circuitpython_version}.uf2"
-
-    print(f"Download the tested CircuitPython version here: \n {download_link}\n")
-    input("Press Enter to exit...")
-    sys.exit()
-
-temp_directory = tempfile.mkdtemp()
-
-urlretrieve(download_url, os.path.join(temp_directory, selected_release_name))
-
-with zipfile.ZipFile(os.path.join(temp_directory, selected_release_name), 'r') as zip_ref:
-    extract_path = os.path.join(temp_directory, "extracted")
-    zip_ref.extractall(extract_path)
-
-source_folder = extract_path
-skip_files = ['secrets.py', 'config.py', 'board_config.py', 'boot_out.txt']
-
-def delete_untracked_files(source_folder, destination_folder):
-    archive_files = set()
-    for root, dirs, files in os.walk(source_folder):
-        for file in files:
-            archive_files.add(os.path.relpath(os.path.join(root, file), source_folder))
-    destination_files = set()
-    for root, dirs, files in os.walk(destination_folder):
-        for file in files:
-            if file not in skip_files:
-                abs_path = os.path.join(root, file)
-                destination_files.add(os.path.relpath(abs_path, destination_folder))
-            else:
-                print(f"Skipping file: {file}")
-
-    untracked_files = destination_files - archive_files
-    for file in untracked_files:
-        if file not in skip_files:  # Add this line to prevent deletion of skipped files
-            abs_path = os.path.join(destination_folder, file)
-            file_directory = os.path.dirname(file)
-            if file_directory == 'lib':
-                try:
-                    os.remove(abs_path)
-                except FileNotFoundError:
-                    pass
-
-delete_untracked_files(source_folder, destination_folder)
+        if recommended_circuitpython_version != circuitpython_version:
+            print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
+            print("It is advised to upgrade/downgrade your CircuitPython version.")
+            decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
+            
+            if decision != 'yes':
+                shutil.rmtree(temp_directory)
+                sys.exit()
 
 def copy_file_if_not_exists(src, dest):
     if not os.path.exists(dest):
         shutil.copy(src, dest)
     else:
-        print(f"Skipping existing file: {os.path.basename(dest)}")
+        print(f"\nSkipping existing file: {os.path.basename(dest)}")
 
-copy_file_if_not_exists(os.path.join(source_folder, 'board_config.py'), os.path.join(destination_folder, 'board_config.py'))
-copy_file_if_not_exists(os.path.join(source_folder, 'config.py'), os.path.join(destination_folder, 'config.py'))
+def print_welcome_message():
+    intro = '''\033[32m
+    Welcome to the WiFiCom Update/Installer Tool!
 
-for root, dirs, files in os.walk(source_folder):
-    files = [f for f in files if not f.startswith('.')]
-    dirs[:] = [d for d in dirs if not (d.startswith('.') and d != 'lib')]
+    This script will help you update your WiFiCom by downloading the
+    latest version of the wificom-lib and updating the files on the
+    CIRCUITPY drive. Keep in mind that your own files (secrets.py,
+    config.py, and board_config.py) will not be affected.
+
+    Let's get started!
+    \033[0m'''
+    print(intro)
+
+def print_success_message():
+    success = '''\033[32m
+    Successfully Installed/Updated your WiFiCom!  Please eject the drive and restart your device.
+
+    Ensure you've updated secrets.py before getting started.
+
+    Enjoy!
+    \033[0m'''
+    print(success)
+
+def get_user_option():
+    print("Available options:")
+    print("1. Install/Update to the latest release")
+    print("2. Install/Update to a specific release")
+    print("3. Install/Update from the latest commit hash")
+    print("4. Install/Update from a specific commit hash")
+
+    selected_option = int(input("\nSelect an option: "))
+    return selected_option
+
+def get_download_url(release, device_type):
+    assets = release['assets']
+    for asset in assets:
+        if device_type in asset['name']:
+            return asset['browser_download_url']
+    return None
+
+def get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type):
+    download_url = None
+    selected_release = None
+
+    if selected_option == 1:
+        latest_release, latest_pre_release = valid_releases
+        selected_release = latest_release
+    elif selected_option == 2:
+        selected_release = choose_specific_release(all_releases)
+    elif selected_option == 3:
+         [selected_release_version, selected_release] = get_latest_commit()
+         selected_release_name = f"wificom-lib_{selected_release_version}"
+         download_url = get_download_url_from_commit_hash(selected_release, device_type)
+    elif selected_option == 4:
+        commit_hash = input("Enter the commit hash: ")
+        [selected_release_version, selected_release] = get_specific_commit(commit_hash)
+        download_url = get_download_url_from_commit_hash(selected_release, device_type)
+    else:
+        print("Invalid option selected. Exiting.")
+        sys.exit()
+
+    if(selected_option <= 2):
+        assets = selected_release['assets']
+        search_str = "picow" if device_type == "raspberry_pi_pico_w" else "nina"
+
+        for asset in assets:
+            if search_str in asset['name']:
+                download_url = asset['browser_download_url']
+                break
+
+    if download_url is None:
+        print(f"No download URL found for the selected release and device type ({device_type}). Exiting.")
+        sys.exit()
+
+    return selected_release, download_url
+
+def extract_all_from_archive(archive_path, extract_path):
+    with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_path)
+
+def choose_specific_release(all_releases):
+    print("\nAvailable releases:")
+    for index, release in enumerate(all_releases):
+        print(f"{index + 1}. {release['name']} ({release['tag_name']})")
+
+    selected_index = int(input("\nEnter the number of the release you want to install: ")) - 1
+
+    if 0 <= selected_index < len(all_releases):
+        return all_releases[selected_index]
+    else:
+        print("Invalid selection. Exiting.")
+        sys.exit()
+
+def copy_files_to_destination(destination_folder, extract_path):
+    src_lib_folder = os.path.join(extract_path, "lib")
+    dst_lib_folder = os.path.join(destination_folder, "lib")
+
+    for item_name in os.listdir(src_lib_folder):
+        src_item = os.path.join(src_lib_folder, item_name)
+        dst_item = os.path.join(dst_lib_folder, item_name)
+        if os.path.isdir(src_item):
+            if os.path.exists(dst_item):
+                shutil.rmtree(dst_item)
+            shutil.copytree(src_item, dst_item)
+        elif os.path.isfile(src_item):
+            shutil.copy2(src_item, dst_item)
+
+    for item in os.listdir(extract_path):
+        src_item = os.path.join(extract_path, item)
+        dst_item = os.path.join(destination_folder, item)
+        if os.path.isfile(src_item):
+            if item in ('config.py', 'board_config.py'):
+                if not os.path.exists(dst_item):
+                    shutil.copy2(src_item, dst_item)
+            else:
+                shutil.copy2(src_item, dst_item)
+
+
+def main():
+    os.system('cls' if os.name == 'nt' else 'clear')
     
-    for file in files:
-        if file not in skip_files:
-            source_path = os.path.join(root, file)
-            relative_path = os.path.relpath(source_path, source_folder)
-            destination_path = os.path.join(destination_folder, relative_path)
+    print_welcome_message()
+    destination_folder = get_circuitpy_drive()
+    circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
+    
+    valid_releases = get_valid_releases()
+    selected_option = get_user_option()
+    all_releases = get_all_releases()
 
-            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-            shutil.copy(source_path, destination_path)
+    boot_out_path = os.path.join(destination_folder, "boot_out.txt")
+    board_info = read_board_info(boot_out_path)
+    board_id = extract_board_id(board_info)
+    device_type = extract_device_type(board_id)
 
-shutil.rmtree(temp_directory)
+    selected_release, download_url = get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type)
 
-# Add the following line to save the commit hash:
-save_installed_commit_hash(selected_release_version, destination_folder)
+    temp_directory = tempfile.mkdtemp()
+    archive_path = download_archive(download_url, os.path.join(temp_directory, selected_release.get('sha', selected_release.get('name', '')).replace('/', '_')))
+    
+    lib_folders_to_delete = get_folders_in_lib(archive_path)
+    delete_folders_in_lib(destination_folder, lib_folders_to_delete)
 
-success = '''\033[32m
-Successfully Installed/Updated your WiFiCom!  Please eject the drive and restart your device.
+    extract_path = os.path.join(temp_directory, "extracted")
+    extract_all_from_archive(archive_path, extract_path)
 
-Ensure you've updated secrets.py before getting started.
+    sources_json_path = os.path.join(extract_path, 'sources.json')
+    check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version)
 
-Enjoy!
-\033[0m'''
-print(success)
-input("Press Enter to exit...")
+    copy_files_to_destination(destination_folder, extract_path)
+
+    shutil.rmtree(temp_directory)
+
+    save_installed_commit_hash(selected_release.get('sha', selected_release.get('name', '')), destination_folder)
+
+    print_success_message()
+
+    input("Press Enter to exit...")
+
+if __name__ == "__main__":
+    main()
