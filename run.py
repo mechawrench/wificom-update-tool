@@ -38,7 +38,7 @@ def extract_board_id(board_info: str):
         board_id = board_id_search.group(1).strip()
         return board_id
     else:
-        print("Board ID not found. Exiting...")
+        print("\033[91mBoard ID not found. Exiting...")
         sys.exit()
 
 def get_circuitpy_drive():
@@ -77,12 +77,12 @@ def get_valid_releases():
 
             return latest_release, latest_pre_release
         else:
-            print("Error: Invalid response from the GitHub API.")
+            print("\033[91mError: Invalid response from the GitHub API.\033[0m")
             input("Press Enter to exit...")
             sys.exit()
 
     except requests.exceptions.RequestException as e:
-        print("Error: Internet connection is not available or could not connect to the server.")
+        print("\033[91mError: Internet connection is not available or could not connect to the server.\033[0m")
         input("Press Enter to exit...")
         sys.exit()
 
@@ -98,21 +98,6 @@ def is_drive_writable(drive_path):
             return False
     else:
         return os.access(drive_path, os.W_OK)
-
-def extract_all_from_archive(archive_path, extract_path):
-    with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-        total_files = len(zip_ref.infolist())
-        extracted_files = 0
-        for file_info in zip_ref.infolist():
-            if not any(part.startswith(".") for part in file_info.filename.split("/")):
-                zip_ref.extract(file_info, extract_path)
-                extracted_files += 1
-                print(f"Extracting: {extracted_files}/{total_files} files", end='\r')
-
-        # Delete original archive
-        os.remove(archive_path)
-
-    print("\nExtraction completed.")
 
 def delete_folders_in_lib(destination_folder, lib_folders_to_delete):
     lib_path = os.path.join(destination_folder, "lib")
@@ -140,7 +125,7 @@ def download_archive(url, save_path):
         print("\nDownload completed.")
         return save_path
     except requests.exceptions.RequestException as e:
-        print("Error occurred while downloading the file: ", e)
+        print("\033[91mError occurred while downloading the file: ", e)
         input("Press Enter to exit...")
         sys.exit()
 
@@ -184,7 +169,7 @@ def get_download_url_from_commit_hash(resource, device_type):
         response = requests.head(zip_url)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("Commit zip file not found - please try another next time.")
+        print("\033[91mCommit zip file not found - please try another next time.")
         sys.exit()
 
     return zip_url
@@ -197,7 +182,7 @@ def compare_versions(version1, version2):
     return version_tuple(version1) >= version_tuple(version2)
 
 def get_all_releases():
-    min_version = "0.9.0"
+    min_version = "0.10.0"
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
     releases = requests.get(api_url).json()
     
@@ -217,7 +202,7 @@ def extract_device_type(board_id: str):
     elif 'raspberry_pi_pico_w' in board_id:
         return 'raspberry_pi_pico_w'
     else:
-        print("Invalid board ID. Exiting...")
+        print("\033[91mInvalid board ID. Exiting...")
         sys.exit()
         
 def extract_sources_json(zip_file_path, extract_path):
@@ -241,8 +226,8 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
         sources = json.load(f)
     
     if 'circuitpython' not in sources:
-        print("\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
-        print("Please check on Discord/GitHub for a recommended version.")
+        print(f"\033[93m\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
+        print(f"\033[93m\nPlease check on Discord/GitHub for a recommended version.")
         decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
         
         if decision != 'yes':
@@ -251,14 +236,14 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
         recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id, device_type)
 
         if recommended_circuitpython_version != circuitpython_version:
-            print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
-            print("It is advised to upgrade/downgrade your CircuitPython version.")
+            print(f"\033[93m\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.\033[0m")
+            print(f"\033[93m\n1t is advised to upgrade/downgrade your CircuitPython version.")
             if(board_id == 'arduino_nano_rp2040_connect'):
-                print("If you are using the Arduino Nano RP2040 Connect, you can download the necessary UF2 file from here:")
-                print("https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-" + recommended_circuitpython_version + ".uf2")
+                print("If you are using the Arduino Nano RP2040 Connect, you can download the necessary UF2 file from here:\n")
+                print("https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-" + recommended_circuitpython_version + ".uf2\n")
             elif board_id == 'raspberry_pi_pico_w':
-                print("If you are using the Raspberry Pi Pico W, you can download the necessary UF2 file from here:")
-                print("https://adafruit-circuit-python.s3.amazonaws.com/bin/raspberry_pi_pico_w/en_US/adafruit-circuitpython-raspberry_pi_pico_w-en_US-" + recommended_circuitpython_version + ".uf2")
+                print("If you are using the Raspberry Pi Pico W, you can download the necessary UF2 file from here:\n")
+                print("https://adafruit-circuit-python.s3.amazonaws.com/bin/raspberry_pi_pico_w/en_US/adafruit-circuitpython-raspberry_pi_pico_w-en_US-" + recommended_circuitpython_version + ".uf2\n")
             decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
             
             if decision != 'yes':
@@ -329,7 +314,7 @@ def get_selected_release_and_url(selected_option, valid_releases, all_releases, 
         [selected_release_version, selected_release] = get_specific_commit(commit_hash)
         download_url = get_download_url_from_commit_hash(selected_release, device_type)
     else:
-        print("Invalid option selected. Exiting.")
+        print("\033[91mInvalid option selected. Exiting.")
         sys.exit()
 
     if(selected_option <= 2):
@@ -342,7 +327,7 @@ def get_selected_release_and_url(selected_option, valid_releases, all_releases, 
                 break
 
     if download_url is None:
-        print(f"No download URL found for the selected release and device type ({device_type}). Exiting.")
+        print(f"\033[91mNo download URL found for the selected release and device type ({device_type}). Exiting.")
         sys.exit()
 
     return selected_release, download_url
@@ -361,7 +346,13 @@ def download_and_extract_latest(selected_release, download_url, temp_directory):
     download_archive(download_url, archive_path)
 
     print("Extracting files...\n")
-    extract_all_from_archive(archive_path, temp_directory)
+    with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+        zip_ref.extractall(temp_directory)
+
+    # Close the file before attempting to remove the temporary directory
+    zip_ref.close()
+
+    os.remove(archive_path)
 
     return archive_path
 
@@ -444,14 +435,14 @@ if __name__ == "__main__":
 
     destination_folder = get_circuitpy_drive()
     if destination_folder is None:
-        print("CIRCUITPY drive not found. Exiting...")
+        print("\033[91mCIRCUITPY drive not found. Exiting...")
         decision = input("Press Enter to exit: ").lower()
         sys.exit()
 
     print_welcome_message()
 
     if not is_drive_writable(destination_folder):
-        print("CIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")
+        print("\033[91mCIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")
 
         decision = input("Press Enter to exit: ").lower()
         sys.exit()
@@ -466,7 +457,7 @@ if __name__ == "__main__":
         selected_option = get_user_option()
         all_releases = get_all_releases()
     except requests.exceptions.RequestException as e:
-        print("Error: Internet connection is not available or could not connect to the server.")
+        print("\033[91mError: Internet connection is not available or could not connect to the server.")
         input("Press Enter to exit...")
         sys.exit()
 
@@ -482,7 +473,7 @@ if __name__ == "__main__":
 
         zip_download = download_and_extract_latest(selected_release, download_url, temp_directory)
     except requests.exceptions.RequestException as e:
-        print("Error: Internet connection is not available or could not connect to the server.")
+        print("\033[91mError: Internet connection is not available or could not connect to the server.")
         input("Press Enter to exit...")
         sys.exit()
 
@@ -492,8 +483,6 @@ if __name__ == "__main__":
     ensure_lib_directory(destination_folder)
 
     copy_files_to_destination(destination_folder, temp_directory)
-
-    print("\nFiles copying completed.")
 
     shutil.rmtree(temp_directory)
 
