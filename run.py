@@ -39,6 +39,7 @@ def extract_board_id(board_info: str):
         return board_id
     else:
         print("\033[91mBoard ID not found. Exiting...")
+        input("Press Enter to exit...")
         sys.exit()
 
 def get_circuitpy_drive():
@@ -98,16 +99,6 @@ def is_drive_writable(drive_path):
             return False
     else:
         return os.access(drive_path, os.W_OK)
-
-def delete_folders_in_lib(destination_folder, lib_folders_to_delete):
-    lib_path = os.path.join(destination_folder, "lib")
-    for folder in lib_folders_to_delete:
-        folder_path = os.path.join(lib_path, folder)
-        try:
-            if os.path.exists(folder_path) and os.path.isdir(folder_path) and not any(part.startswith(".") for part in folder_path.split("/")):
-                shutil.rmtree(folder_path)
-        except Exception as e:
-            print(f"An error occurred while deleting {folder_path}: {e}")
 
 def download_archive(url, save_path):
     try:
@@ -170,6 +161,7 @@ def get_download_url_from_commit_hash(resource, device_type):
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print("\033[91mCommit zip file not found - please try another next time.")
+        input("Press Enter to exit...")
         sys.exit()
 
     return zip_url
@@ -203,6 +195,7 @@ def extract_device_type(board_id: str):
         return 'raspberry_pi_pico_w'
     else:
         print("\033[91mInvalid board ID. Exiting...")
+        input("Press Enter to exit...")
         sys.exit()
         
 def extract_sources_json(zip_file_path, extract_path):
@@ -228,7 +221,7 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
     if 'circuitpython' not in sources:
         print(f"\033[93m\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
         print(f"\033[93m\nPlease check on Discord/GitHub for a recommended version.")
-        decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
+        decision = input("Type 'Yes' to continue anyways or Press Enter to exit... ").lower()
         
         if decision != 'yes':
             sys.exit()
@@ -244,7 +237,7 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
             elif board_id == 'raspberry_pi_pico_w':
                 print("If you are using the Raspberry Pi Pico W, you can download the necessary UF2 file from here:\n")
                 print("https://adafruit-circuit-python.s3.amazonaws.com/bin/raspberry_pi_pico_w/en_US/adafruit-circuitpython-raspberry_pi_pico_w-en_US-" + recommended_circuitpython_version + ".uf2\n")
-            decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
+            decision = input("Type 'Yes' to continue anyways or Press Enter to exit... ").lower()
             
             if decision != 'yes':
                 shutil.rmtree(temp_directory)
@@ -315,6 +308,7 @@ def get_selected_release_and_url(selected_option, valid_releases, all_releases, 
         download_url = get_download_url_from_commit_hash(selected_release, device_type)
     else:
         print("\033[91mInvalid option selected. Exiting.")
+        input("Press Enter to exit...")
         sys.exit()
 
     if(selected_option <= 2):
@@ -328,6 +322,7 @@ def get_selected_release_and_url(selected_option, valid_releases, all_releases, 
 
     if download_url is None:
         print(f"\033[91mNo download URL found for the selected release and device type ({device_type}). Exiting.")
+        input("Press Enter to exit...")
         sys.exit()
 
     return selected_release, download_url
@@ -356,58 +351,69 @@ def download_and_extract_latest(selected_release, download_url, temp_directory):
 
     return archive_path
 
-def remove_hidden_files(drive_path):
-    if os.path.exists(drive_path):
-        for root, dirs, files in os.walk(drive_path, topdown=False):
-            for file_name in files:
-                if file_name.startswith("._"):
-                    file_path = os.path.join(root, file_name)
-                    try:
-                        os.remove(file_path)
-                    except Exception as e:
-                        print(f"Error while removing unused hidden file {file_path}: {e}")
-            for dir_name in dirs:
-                if dir_name.startswith("._"):
-                    dir_path = os.path.join(root, dir_name)
-                    try:
-                        os.rmdir(dir_path)
-                    except Exception as e:
-                        print(f"Error while removing {dir_path}: {e}")
-
 def copy_files_to_destination(destination_folder, source_folder):
-    total_files = sum(len(files) for _, _, files in os.walk(source_folder))
-    copied_files = 0
+    lib_folder = os.path.join(destination_folder, 'lib')
+    os.makedirs(lib_folder, exist_ok=True)
 
+    ignore_files = ["boot_out.txt", "secrets.py", "config.py", "board_config.py"]
+
+    total_files = 0
+    copied_files = []
+
+    # Collect the files to ignore
+    existing_files = set()
+    for root, _, files in os.walk(destination_folder):
+        for file in files:
+            dest_file = os.path.join(root, file)
+            if not any(file.startswith(ignore) for ignore in ignore_files):
+                existing_files.add(dest_file)
+
+    # Copy files from source_folder to destination_folder
     for root, _, files in os.walk(source_folder):
+        dest_root = os.path.join(destination_folder, os.path.relpath(root, source_folder))
+        os.makedirs(dest_root, exist_ok=True)
+
         for file in files:
             src_file = os.path.join(root, file)
-            dest_file = os.path.join(destination_folder, os.path.relpath(src_file, source_folder))
+            if os.path.isfile(src_file) and not file.startswith('.'):  # Skip hidden files
+                dest_file = os.path.join(dest_root, file)
 
-            dest_folder = os.path.dirname(dest_file)
-            if not os.path.exists(dest_folder):
-                os.makedirs(dest_folder)
+                # Check if the file should be ignored
+                if os.path.basename(dest_file) in ignore_files:
+                    continue
 
-            if not os.path.exists(dest_file):
-                shutil.copy(src_file, dest_file)
-                copied_files += 1
-                print(f"Copying: {copied_files}/{total_files} files", end='\r')
-            else:
-                if file in ["board_config.py", "secrets.py", "config.py"]:
-                    print(f"\nSkipping file: {file}")
-                else:
-                    if files_match(src_file, dest_file):
-                        print(f"\nSkipping identical file: {file}")
-                    else:
-                        shutil.copy(src_file, dest_file)
-                        copied_files += 1
-                        print(f"Copying: {copied_files}/{total_files} files", end='\r')
+                # Check if the file already exists in the destination folder
+                if not os.path.exists(dest_file):
+                    # If the file doesn't exist in the destination folder, copy from source_folder to destination_folder
+                    shutil.copy(src_file, dest_file)
+                    copied_files.append(dest_file)
+
+                total_files += 1
+                print(f"Copying: {len(copied_files)}/{total_files} files", end='\r')
 
     print("\nFile copying completed.")
+
+    # Remove .py files from the destination "lib" folder that have corresponding .mpy files in the source
+    for file in existing_files:
+        if file.endswith('.py') and not os.path.basename(file).startswith('._'):
+            mpy_file = os.path.splitext(file)[0] + '.mpy'
+            if os.path.exists(mpy_file):
+                os.remove(file)
+
+    # Remove empty subdirectories inside "lib"
+    for root, dirs, _ in os.walk(lib_folder, topdown=False):
+        for dir_name in dirs:
+            dir_path = os.path.join(root, dir_name)
+            if not os.listdir(dir_path):  # Check if the directory is empty
+                os.rmdir(dir_path)
 
 def files_match(file1, file2):
     BLOCK_SIZE = 65536
     hasher1 = hashlib.sha256()
     hasher2 = hashlib.sha256()
+
+    if not os.path.exists(file1) or not os.path.exists(file2):
+        return False
 
     with open(file1, 'rb') as f1, open(file2, 'rb') as f2:
         while True:
@@ -436,18 +442,14 @@ if __name__ == "__main__":
     destination_folder = get_circuitpy_drive()
     if destination_folder is None:
         print("\033[91mCIRCUITPY drive not found. Exiting...")
-        decision = input("Press Enter to exit: ").lower()
+        decision = input("Press Enter to exit... ").lower()
         sys.exit()
 
     print_welcome_message()
 
     if not is_drive_writable(destination_folder):
-        print("\033[91mCIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")
-
-        decision = input("Press Enter to exit: ").lower()
+        print("\033[91mCIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")        decision = input("Press Enter to exit... ").lower()
         sys.exit()
-
-    remove_hidden_files(destination_folder)
 
     destination_folder = get_circuitpy_drive()
     circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
@@ -458,6 +460,7 @@ if __name__ == "__main__":
         all_releases = get_all_releases()
     except requests.exceptions.RequestException as e:
         print("\033[91mError: Internet connection is not available or could not connect to the server.")
+    
         input("Press Enter to exit...")
         sys.exit()
 
