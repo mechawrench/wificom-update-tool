@@ -358,7 +358,7 @@ def copy_files_to_destination(destination_folder, source_folder):
     ignore_files = ["boot_out.txt", "secrets.py", "config.py", "board_config.py"]
 
     total_files = 0
-    copied_files = []
+    copied_files = []  # Initialize the list here
 
     # Collect the files to ignore
     existing_files = set()
@@ -383,8 +383,9 @@ def copy_files_to_destination(destination_folder, source_folder):
                     continue
 
                 # Check if the file already exists in the destination folder
-                if not os.path.exists(dest_file):
-                    # If the file doesn't exist in the destination folder, copy from source_folder to destination_folder
+                if not os.path.exists(dest_file) or get_file_hash(src_file) != get_file_hash(dest_file):
+                    # If the file doesn't exist in the destination folder or the content is different,
+                    # copy from source_folder to destination_folder
                     shutil.copy(src_file, dest_file)
                     copied_files.append(dest_file)
 
@@ -406,6 +407,19 @@ def copy_files_to_destination(destination_folder, source_folder):
             dir_path = os.path.join(root, dir_name)
             if not os.listdir(dir_path):  # Check if the directory is empty
                 os.rmdir(dir_path)
+                
+def get_file_hash(file_path):
+    BLOCK_SIZE = 65536
+    hasher = hashlib.sha256()
+
+    with open(file_path, 'rb') as file:
+        while True:
+            data = file.read(BLOCK_SIZE)
+            if not data:
+                break
+            hasher.update(data)
+
+    return hasher.hexdigest()
 
 def files_match(file1, file2):
     BLOCK_SIZE = 65536
