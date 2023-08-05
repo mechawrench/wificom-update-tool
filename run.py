@@ -448,7 +448,8 @@ if __name__ == "__main__":
     print_welcome_message()
 
     if not is_drive_writable(destination_folder):
-        print("\033[91mCIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")        decision = input("Press Enter to exit... ").lower()
+        print("\033[91mCIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")        
+        decision = input("Press Enter to exit... ").lower()
         sys.exit()
 
     destination_folder = get_circuitpy_drive()
