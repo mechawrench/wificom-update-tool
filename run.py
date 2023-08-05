@@ -410,13 +410,11 @@ if __name__ == "__main__":
     print_welcome_message()
 
     if not is_drive_writable(destination_folder):
-        print("CIRCUITPY drive is read-only. Please make sure the drive is writable and try again.")
-        decision = input("Press Enter to exit: ").lower()
-            
-        if decision:
-            sys.exit()
-    
+        print("CIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")
 
+        decision = input("Press Enter to exit: ").lower()
+        sys.exit()
+    
     remove_hidden_files(destination_folder)
 
     destination_folder = get_circuitpy_drive()
