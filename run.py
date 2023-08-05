@@ -60,8 +60,6 @@ def get_valid_releases():
     try:
         releases = requests.get(api_url).json()
 
-        print("API Response:", releases)  # Add this line to print the API response
-
         latest_release = None
         latest_pre_release = None
 
