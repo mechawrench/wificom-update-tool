@@ -226,8 +226,6 @@ def print_download_progress(bytes_downloaded, total_bytes):
     progress = int((bytes_downloaded / total_bytes) * 100)
     print(f"Downloading: {progress}% ({bytes_downloaded}/{total_bytes} bytes)", end='\r')
 
-
-
 def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version):
     with open(sources_json_path, 'r') as f:
         sources = json.load(f)
@@ -409,11 +407,15 @@ if __name__ == "__main__":
         print("CIRCUITPY drive not found. Exiting...")
         sys.exit()
 
+    print_welcome_message()
+
     if not is_drive_writable(destination_folder):
         print("CIRCUITPY drive is read-only. Please make sure the drive is writable and try again.")
-        sys.exit()
+        decision = input("Press Enter to exit: ").lower()
+            
+        if decision:
+            sys.exit()
     
-    print_welcome_message()
 
     remove_hidden_files(destination_folder)
 
