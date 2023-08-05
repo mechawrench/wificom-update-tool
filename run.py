@@ -8,6 +8,7 @@ import string
 import sys
 import tempfile
 import zipfile
+import hashlib
 
 def get_readme_content(version):
     api_url = f"https://api.github.com/repos/mechawrench/wificom-lib/contents/README.md?ref={version}"
@@ -56,21 +57,36 @@ def get_circuitpy_drive():
 
 def get_valid_releases():
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
-    releases = requests.get(api_url).json()
-    latest_release = None
-    latest_pre_release = None
+    try:
+        releases = requests.get(api_url).json()
 
-    for release in releases:
-        if release['prerelease']:
-            if latest_pre_release is None:
-                latest_pre_release = release
-        elif latest_release is None:
-            latest_release = release
+        print("API Response:", releases)  # Add this line to print the API response
 
-        if latest_release is not None and latest_pre_release is not None:
-            break
+        latest_release = None
+        latest_pre_release = None
 
-    return latest_release, latest_pre_release
+        if isinstance(releases, list):
+            for release in releases:
+                if isinstance(release, dict) and 'prerelease' in release:
+                    if release['prerelease']:
+                        if latest_pre_release is None:
+                            latest_pre_release = release
+                    elif latest_release is None:
+                        latest_release = release
+
+                    if latest_release is not None and latest_pre_release is not None:
+                        break
+
+            return latest_release, latest_pre_release
+        else:
+            print("Error: Invalid response from the GitHub API.")
+            input("Press Enter to exit...")
+            sys.exit()
+
+    except requests.exceptions.RequestException as e:
+        print("Error: Internet connection is not available or could not connect to the server.")
+        input("Press Enter to exit...")
+        sys.exit()
 
 def is_drive_writable(drive_path):
     if os.name == 'nt':
@@ -95,6 +111,9 @@ def extract_all_from_archive(archive_path, extract_path):
                 extracted_files += 1
                 print(f"Extracting: {extracted_files}/{total_files} files", end='\r')
 
+        # Delete original archive
+        os.remove(archive_path)
+
     print("\nExtraction completed.")
 
 def delete_folders_in_lib(destination_folder, lib_folders_to_delete):
@@ -107,32 +126,25 @@ def delete_folders_in_lib(destination_folder, lib_folders_to_delete):
         except Exception as e:
             print(f"An error occurred while deleting {folder_path}: {e}")
 
-
-def get_folders_in_lib(zip_file_path):
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        lib_folders = set()
-        for file_info in zip_ref.infolist():
-            if file_info.filename.startswith("lib/") and file_info.is_dir() and not any(part.startswith(".") for part in file_info.filename.split("/")):
-                folder_name = file_info.filename.split('/')[1]
-                lib_folders.add(folder_name)
-        return lib_folders
-
 def download_archive(url, save_path):
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
-    total_bytes = int(response.headers.get('content-length', 0))
+    try:
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        total_bytes = int(response.headers.get('content-length', 0))
+        bytes_downloaded = 0
 
-    bytes_downloaded = 0
+        with open(save_path, "wb") as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+                bytes_downloaded += len(chunk)
+                print_download_progress(bytes_downloaded, total_bytes)
 
-    with open(save_path, "wb") as file:
-        for chunk in response.iter_content(chunk_size=8192):
-            file.write(chunk)
-            bytes_downloaded += len(chunk)
-            print_download_progress(bytes_downloaded, total_bytes)
-
-    print("\nDownload completed.")
-
-    return save_path
+        print("\nDownload completed.")
+        return save_path
+    except requests.exceptions.RequestException as e:
+        print("Error occurred while downloading the file: ", e)
+        input("Press Enter to exit...")
+        sys.exit()
 
 def get_recommended_circuitpython_version(sources_json_path, board_id, device_type):
     with open(sources_json_path, 'r') as f:
@@ -244,10 +256,10 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
             print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
             print("It is advised to upgrade/downgrade your CircuitPython version.")
             if(board_id == 'arduino_nano_rp2040_connect'):
-                print("If you are using the Arduino Nano RP2040 Connect, you can download the latest UF2 file from here:")
+                print("If you are using the Arduino Nano RP2040 Connect, you can download the necessary UF2 file from here:")
                 print("https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-" + recommended_circuitpython_version + ".uf2")
             elif board_id == 'raspberry_pi_pico_w':
-                print("If you are using the Raspberry Pi Pico W, you can download the latest UF2 file from here:")
+                print("If you are using the Raspberry Pi Pico W, you can download the necessary UF2 file from here:")
                 print("https://adafruit-circuit-python.s3.amazonaws.com/bin/raspberry_pi_pico_w/en_US/adafruit-circuitpython-raspberry_pi_pico_w-en_US-" + recommended_circuitpython_version + ".uf2")
             decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
             
@@ -341,45 +353,19 @@ def choose_specific_release(all_releases):
     print("\nAvailable releases:")
     for index, release in enumerate(all_releases):
         print(f"{index + 1}. {release['name']} ({release['tag_name']})")
+    print("\n")
+    selected_index = int(input("Select a release: ")) - 1
+    return all_releases[selected_index]
 
-    selected_index = int(input("\nEnter the number of the release you want to install: ")) - 1
+def download_and_extract_latest(selected_release, download_url, temp_directory):
+    print("Downloading the latest release...\n")
+    archive_path = os.path.join(temp_directory, f"wificom-lib_{selected_release.get('parents')[0]['sha'] if 'parents' in selected_release else selected_release['tag_name']}.zip")
+    download_archive(download_url, archive_path)
 
-    if 0 <= selected_index < len(all_releases):
-        return all_releases[selected_index]
-    else:
-        print("Invalid selection. Exiting.")
-        sys.exit()
+    print("Extracting files...\n")
+    extract_all_from_archive(archive_path, temp_directory)
 
-def is_hidden_file(file_name):
-    return file_name.startswith("._")
-
-def copy_files_to_destination(destination_folder, extract_path):
-    src_lib_folder = os.path.join(extract_path, "lib")
-    dst_lib_folder = os.path.join(destination_folder, "lib")
-
-    total_files = len(os.listdir(src_lib_folder))
-    copied_files = 0
-
-    for item in os.listdir(src_lib_folder):
-        src_item = os.path.join(src_lib_folder, item)
-        dst_item = os.path.join(dst_lib_folder, item)
-
-        if is_hidden_file(item):
-            continue
-
-        try:
-            if os.path.isdir(src_item):
-                if os.path.exists(dst_item):
-                    shutil.rmtree(dst_item)
-                shutil.copytree(src_item, dst_item)
-            elif os.path.isfile(src_item):
-                shutil.copy2(src_item, dst_item)
-            copied_files += 1
-            print(f"Copying: {copied_files}/{total_files} files", end='\r')
-        except Exception as e:
-            print(f"An error occurred while copying {src_item} to {dst_item}: {e}")
-
-    print("\nCopying completed.")
+    return archive_path
 
 def remove_hidden_files(drive_path):
     if os.path.exists(drive_path):
@@ -399,6 +385,62 @@ def remove_hidden_files(drive_path):
                     except Exception as e:
                         print(f"Error while removing {dir_path}: {e}")
 
+def copy_files_to_destination(destination_folder, source_folder):
+    total_files = sum(len(files) for _, _, files in os.walk(source_folder))
+    copied_files = 0
+
+    for root, _, files in os.walk(source_folder):
+        for file in files:
+            src_file = os.path.join(root, file)
+            dest_file = os.path.join(destination_folder, os.path.relpath(src_file, source_folder))
+
+            dest_folder = os.path.dirname(dest_file)
+            if not os.path.exists(dest_folder):
+                os.makedirs(dest_folder)
+
+            if not os.path.exists(dest_file):
+                shutil.copy(src_file, dest_file)
+                copied_files += 1
+                print(f"Copying: {copied_files}/{total_files} files", end='\r')
+            else:
+                if file in ["board_config.py", "secrets.py", "config.py"]:
+                    print(f"\nSkipping file: {file}")
+                else:
+                    if files_match(src_file, dest_file):
+                        print(f"\nSkipping identical file: {file}")
+                    else:
+                        shutil.copy(src_file, dest_file)
+                        copied_files += 1
+                        print(f"Copying: {copied_files}/{total_files} files", end='\r')
+
+    print("\nFile copying completed.")
+
+def files_match(file1, file2):
+    BLOCK_SIZE = 65536
+    hasher1 = hashlib.sha256()
+    hasher2 = hashlib.sha256()
+
+    with open(file1, 'rb') as f1, open(file2, 'rb') as f2:
+        while True:
+            block1 = f1.read(BLOCK_SIZE)
+            block2 = f2.read(BLOCK_SIZE)
+
+            if not block1 and not block2:
+                break
+
+            if block1 != block2:
+                return False
+
+            hasher1.update(block1)
+            hasher2.update(block2)
+
+    return hasher1.hexdigest() == hasher2.hexdigest()
+
+def ensure_lib_directory(destination_folder):
+    lib_path = os.path.join(destination_folder, "lib")
+    if not os.path.exists(lib_path):
+        os.makedirs(lib_path)
+
 if __name__ == "__main__":
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -414,43 +456,43 @@ if __name__ == "__main__":
 
         decision = input("Press Enter to exit: ").lower()
         sys.exit()
-    
+
     remove_hidden_files(destination_folder)
 
     destination_folder = get_circuitpy_drive()
     circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
-    
-    valid_releases = get_valid_releases()
-    selected_option = get_user_option()
-    all_releases = get_all_releases()
+
+    try:
+        valid_releases = get_valid_releases()
+        selected_option = get_user_option()
+        all_releases = get_all_releases()
+    except requests.exceptions.RequestException as e:
+        print("Error: Internet connection is not available or could not connect to the server.")
+        input("Press Enter to exit...")
+        sys.exit()
 
     boot_out_path = os.path.join(destination_folder, "boot_out.txt")
     board_info = read_board_info(boot_out_path)
     board_id = extract_board_id(board_info)
     device_type = extract_device_type(board_id)
 
-    selected_release, download_url = get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type)
+    try:
+        selected_release, download_url = get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type)
 
-    temp_directory = tempfile.mkdtemp()
-    
-    archive_path = download_archive(download_url, os.path.join(temp_directory, selected_release.get('sha', selected_release.get('name', '')).replace('/', '_')))
+        temp_directory = tempfile.mkdtemp()
 
-    print("\nDownloading archive completed.")
+        zip_download = download_and_extract_latest(selected_release, download_url, temp_directory)
+    except requests.exceptions.RequestException as e:
+        print("Error: Internet connection is not available or could not connect to the server.")
+        input("Press Enter to exit...")
+        sys.exit()
 
-    print("\nDeleted unnecessary folders in lib directory.")
-
-    extract_path = os.path.join(temp_directory, "extracted")
-    extract_all_from_archive(archive_path, extract_path)
-
-    print("\nArchive extraction completed.")
-
-    sources_json_path = os.path.join(extract_path, 'sources.json')
+    sources_json_path = os.path.join(temp_directory, 'sources.json')
     check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version)
 
-    lib_folders_to_delete = get_folders_in_lib(archive_path)
-    delete_folders_in_lib(destination_folder, lib_folders_to_delete)
+    ensure_lib_directory(destination_folder)
 
-    copy_files_to_destination(destination_folder, extract_path)
+    copy_files_to_destination(destination_folder, temp_directory)
 
     print("\nFiles copying completed.")
 
