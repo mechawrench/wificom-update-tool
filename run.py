@@ -447,6 +447,7 @@ if __name__ == "__main__":
     destination_folder = get_circuitpy_drive()
     if destination_folder is None:
         print("CIRCUITPY drive not found. Exiting...")
+        decision = input("Press Enter to exit: ").lower()
         sys.exit()
 
     print_welcome_message()
