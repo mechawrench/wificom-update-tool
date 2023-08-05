@@ -383,9 +383,6 @@ def copy_files_to_destination(destination_folder, extract_path):
 
     print("\nCopying completed.")
 
-def is_drive_writable(drive_path):
-    return os.access(drive_path, os.W_OK)
-
 def remove_hidden_files(drive_path):
     if os.path.exists(drive_path):
         for root, dirs, files in os.walk(drive_path, topdown=False):
@@ -395,7 +392,7 @@ def remove_hidden_files(drive_path):
                     try:
                         os.remove(file_path)
                     except Exception as e:
-                        print(f"Error while removing {file_path}: {e}")
+                        print(f"Error while removing unused hidden file {file_path}: {e}")
             for dir_name in dirs:
                 if dir_name.startswith("._"):
                     dir_path = os.path.join(root, dir_name)
