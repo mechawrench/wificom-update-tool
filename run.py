@@ -386,7 +386,6 @@ def count_files_in_directory(directory, ignore_files=[]):
                 total_files += 1
     return total_files
 
-
 def copy_files_to_destination(destination_folder, source_folder):
     lib_folder = os.path.join(destination_folder, 'lib')
     os.makedirs(lib_folder, exist_ok=True)
@@ -409,13 +408,13 @@ def copy_files_to_destination(destination_folder, source_folder):
         dest_subdir = os.path.dirname(dest_file)
         os.makedirs(dest_subdir, exist_ok=True)
 
-        if os.path.exists(dest_file) and files_match(src_file, dest_file):
+        if os.path.exists(dest_file) and os.path.isfile(dest_file) and os.path.isfile(src_file):
             skipped_files.append(dest_file)
         else:
             if os.path.isdir(src_file):
                 shutil.copytree(src_file, dest_file, dirs_exist_ok=True)
             else:
-                shutil.copy(src_file, dest_file)
+                shutil.copy2(src_file, dest_file)
             copied_files.append(dest_file)
 
         print(f"Checking: {len(copied_files) + len(skipped_files)}/{total_files} files", end='\r')
@@ -424,43 +423,19 @@ def copy_files_to_destination(destination_folder, source_folder):
     print(f"Total files copied: {len(copied_files)}")
     print(f"Total files skipped: {len(skipped_files)}")
 
-   # Remove files inside subdirectories of lib that are not present in the source_folder
-    lib_subdirectories = set()
-    for root, dirs, _ in os.walk(lib_folder):
-        for dir_name in dirs:
-            dir_path = os.path.join(root, dir_name)
-            rel_path = os.path.relpath(dir_path, lib_folder)
-            if rel_path not in lib_subdirectories:
-                lib_subdirectories.add(rel_path)
-                if not os.path.exists(os.path.join(source_folder, rel_path)):
-                    continue
-
-    for root, _, files in os.walk(lib_folder):
-        for file in files:
-            dest_file = os.path.join(root, file)
-            if os.path.dirname(os.path.relpath(dest_file, lib_folder)) in lib_subdirectories:
-                src_file = os.path.join(source_folder, os.path.relpath(dest_file, destination_folder))
-                if src_file not in source_to_dest_mapping and not os.path.basename(dest_file).startswith('.'):
-                    os.remove(dest_file)
-
-    # Remove empty subdirectories inside the destination folder, excluding lib/
-    for root, dirs, _ in os.walk(destination_folder, topdown=False):
-        if root == lib_folder:
-            continue
-        for dir_name in dirs:
-            dir_path = os.path.join(root, dir_name)
-            if not dir_name.startswith('.') and not os.listdir(dir_path):
-                os.rmdir(dir_path)
-
-    # Remove .py files in destination/libs/ if corresponding .mpy file exists in source/libs/
+    # Remove .py files in destination/libs/ if corresponding .mpy file exists in source/libs/ and lib/directory exists in source_folder/libs
     for root, _, files in os.walk(os.path.join(source_folder, "lib")):
         for file in files:
             if file.endswith(".mpy"):
-                source_file_path = os.path.join(root, file)
-                destination_file_path = os.path.join(lib_folder, file[:-4] + ".py")
+                destination_file_path = os.path.join(lib_folder, os.path.relpath(root, os.path.join(source_folder, "lib")), file[:-4] + ".py")
                 if os.path.exists(destination_file_path):
                     os.remove(destination_file_path)
 
+    # Post-processing step to delete folders inside lib in the destination that don't exist in the source files
+    for root, dirs, _ in os.walk(lib_folder, topdown=False):
+        relative_path = os.path.relpath(root, lib_folder)
+        if relative_path and not os.listdir(root):  # Check if the directory is empty and not the root lib folder
+            shutil.rmtree(root)
 
 def get_file_hash(file_path):
     BLOCK_SIZE = 65536
