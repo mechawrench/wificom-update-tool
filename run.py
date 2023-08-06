@@ -10,11 +10,13 @@ import tempfile
 import zipfile
 import hashlib
 
+
 def get_readme_content(version):
     api_url = f"https://api.github.com/repos/mechawrench/wificom-lib/contents/README.md?ref={version}"
     response = requests.get(api_url).json()
     readme_content = requests.get(response['download_url']).text
     return readme_content
+
 
 def read_circuitpython_version_from_boot_out(drive_path):
     try:
@@ -27,9 +29,11 @@ def read_circuitpython_version_from_boot_out(drive_path):
         pass
     return None
 
+
 def read_board_info(file_path: str) -> str:
     with open(file_path, 'r') as file:
         return file.read()
+
 
 def extract_board_id(board_info: str):
     board_id_search = re.search(r'Board ID:(.+)', board_info)
@@ -38,9 +42,10 @@ def extract_board_id(board_info: str):
         board_id = board_id_search.group(1).strip()
         return board_id
     else:
-        print("\033[91mBoard ID not found. Exiting...")
+        print("Board ID not found. Exiting...")
         input("Press Enter to exit...")
         sys.exit()
+
 
 def get_circuitpy_drive():
     if os.name == 'posix':
@@ -55,6 +60,7 @@ def get_circuitpy_drive():
                 if volume_name_buf.value == 'CIRCUITPY':
                     return f"{letter}:\\"
     return None
+
 
 def get_valid_releases():
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
@@ -78,14 +84,15 @@ def get_valid_releases():
 
             return latest_release, latest_pre_release
         else:
-            print("\033[91mError: Invalid response from the GitHub API.\033[0m")
+            print("Error: Invalid response from the GitHub API.")
             input("Press Enter to exit...")
             sys.exit()
 
     except requests.exceptions.RequestException as e:
-        print("\033[91mError: Internet connection is not available or could not connect to the server.\033[0m")
+        print("Error: Internet connection is not available or could not connect to the server.")
         input("Press Enter to exit...")
         sys.exit()
+
 
 def is_drive_writable(drive_path):
     if os.name == 'nt':
@@ -99,6 +106,7 @@ def is_drive_writable(drive_path):
             return False
     else:
         return os.access(drive_path, os.W_OK)
+
 
 def download_archive(url, save_path):
     try:
@@ -116,9 +124,10 @@ def download_archive(url, save_path):
         print("\nDownload completed.")
         return save_path
     except requests.exceptions.RequestException as e:
-        print("\033[91mError occurred while downloading the file: ", e)
+        print("Error occurred while downloading the file: ", e)
         input("Press Enter to exit...")
         sys.exit()
+
 
 def get_recommended_circuitpython_version(sources_json_path, board_id, device_type):
     with open(sources_json_path, 'r') as f:
@@ -127,17 +136,20 @@ def get_recommended_circuitpython_version(sources_json_path, board_id, device_ty
     recommended_version = sources['circuitpython'].get('picow' if device_type == 'raspberry_pi_pico_w' else 'nina')
     return recommended_version
 
+
 def get_latest_commit():
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/commits"
     response = requests.get(api_url).json()
     latest_commit_hash = response[0]['sha']
     return latest_commit_hash, response[0]
 
+
 def get_specific_commit(commit_hash):
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/commits/" + commit_hash
     response = requests.get(api_url).json()
     latest_commit_hash = response
     return latest_commit_hash, response
+
 
 def get_resource_identifier(resource):
     if 'sha' in resource:
@@ -146,6 +158,7 @@ def get_resource_identifier(resource):
         return resource['name']
     else:
         return 'default_value'
+
 
 def get_download_url_from_commit_hash(resource, device_type):
     bucket_name = 'wificom-lib'
@@ -160,18 +173,21 @@ def get_download_url_from_commit_hash(resource, device_type):
         response = requests.head(zip_url)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print("\033[91mCommit zip file not found - please try another next time.")
+        print("Commit zip file not found - please try another next time.")
         input("Press Enter to exit...")
         sys.exit()
 
     return zip_url
 
+
 def version_tuple(version_str):
     version_str = version_str.lstrip('v').split('-')[0]
     return tuple(map(int, (version_str.split("."))))
 
+
 def compare_versions(version1, version2):
     return version_tuple(version1) >= version_tuple(version2)
+
 
 def get_all_releases():
     min_version = "0.10.0"
@@ -183,10 +199,12 @@ def get_all_releases():
 
     return valid_releases
 
+
 def save_installed_commit_hash(commit_hash, destination_folder):
     installed_version_file = os.path.join(destination_folder, 'wificom_installed_version.txt')
     with open(installed_version_file, 'w') as f:
         f.write(commit_hash)
+
 
 def extract_device_type(board_id: str):
     if 'arduino_nano_rp2040_connect' in board_id:
@@ -194,13 +212,15 @@ def extract_device_type(board_id: str):
     elif 'raspberry_pi_pico_w' in board_id:
         return 'raspberry_pi_pico_w'
     else:
-        print("\033[91mInvalid board ID. Exiting...")
+        print("Invalid board ID. Exiting...")
         input("Press Enter to exit...")
         sys.exit()
-        
+
+
 def extract_sources_json(zip_file_path, extract_path):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extract("sources.json", extract_path)
+
 
 def choose_release(releases):
     print("\nAvailable releases:")
@@ -210,17 +230,19 @@ def choose_release(releases):
     selected_index = int(input("Select a release: ")) - 1
     return releases[selected_index]
 
+
 def print_download_progress(bytes_downloaded, total_bytes):
     progress = int((bytes_downloaded / total_bytes) * 100)
     print(f"Downloading: {progress}% ({bytes_downloaded}/{total_bytes} bytes)", end='\r')
+
 
 def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version):
     with open(sources_json_path, 'r') as f:
         sources = json.load(f)
     
     if 'circuitpython' not in sources:
-        print(f"\033[93m\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
-        print(f"\033[93m\nPlease check on Discord/GitHub for a recommended version.")
+        print(f"\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
+        print(f"\nPlease check on Discord/GitHub for a recommended version.")
         decision = input("Type 'Yes' to continue anyways or Press Enter to exit... ").lower()
         
         if decision != 'yes':
@@ -229,8 +251,8 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
         recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id, device_type)
 
         if recommended_circuitpython_version != circuitpython_version:
-            print(f"\033[93m\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.\033[0m")
-            print(f"\033[93m\n1t is advised to upgrade/downgrade your CircuitPython version.")
+            print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
+            print(f"\nIt is advised to upgrade/downgrade your CircuitPython version.")
             if(board_id == 'arduino_nano_rp2040_connect'):
                 print("If you are using the Arduino Nano RP2040 Connect, you can download the necessary UF2 file from here:\n")
                 print("https://adafruit-circuit-python.s3.amazonaws.com/bin/arduino_nano_rp2040_connect/en_US/adafruit-circuitpython-arduino_nano_rp2040_connect-en_US-" + recommended_circuitpython_version + ".uf2\n")
@@ -243,34 +265,34 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
                 shutil.rmtree(temp_directory)
                 sys.exit()
 
+
 def copy_file_if_not_exists(src, dest):
     if not os.path.exists(dest):
         shutil.copy(src, dest)
     else:
         print(f"\nSkipping existing file: {os.path.basename(dest)}")
 
+
 def print_welcome_message():
-    intro = '''\033[32m
-    Welcome to the WiFiCom Update/Installer Tool!
+    intro = '''\nWelcome to the WiFiCom Update/Installer Tool!
 
     This script will help you update your WiFiCom by downloading the
     latest version of the wificom-lib and updating the files on the
     CIRCUITPY drive. Keep in mind that your own files (secrets.py,
     config.py, and board_config.py) will not be affected.
 
-    Let's get started!
-    \033[0m'''
+    Let's get started!\n'''
     print(intro)
 
+
 def print_success_message():
-    success = '''\033[32m
-    Successfully Installed/Updated your WiFiCom!  Please eject the drive and restart your device.
+    success = '''\nSuccessfully Installed/Updated your WiFiCom!  Please eject the drive and restart your device.
 
     Ensure you've updated secrets.py before getting started.
 
-    Enjoy!
-    \033[0m'''
+    Enjoy!\n'''
     print(success)
+
 
 def get_user_option():
     print("Available options:")
@@ -282,12 +304,14 @@ def get_user_option():
     selected_option = int(input("\nSelect an option: "))
     return selected_option
 
+
 def get_download_url(release, device_type):
     assets = release['assets']
     for asset in assets:
         if device_type in asset['name']:
             return asset['browser_download_url']
     return None
+
 
 def get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type):
     download_url = None
@@ -307,7 +331,7 @@ def get_selected_release_and_url(selected_option, valid_releases, all_releases, 
         [selected_release_version, selected_release] = get_specific_commit(commit_hash)
         download_url = get_download_url_from_commit_hash(selected_release, device_type)
     else:
-        print("\033[91mInvalid option selected. Exiting.")
+        print("Invalid option selected. Exiting.")
         input("Press Enter to exit...")
         sys.exit()
 
@@ -321,11 +345,12 @@ def get_selected_release_and_url(selected_option, valid_releases, all_releases, 
                 break
 
     if download_url is None:
-        print(f"\033[91mNo download URL found for the selected release and device type ({device_type}). Exiting.")
+        print(f"No download URL found for the selected release and device type ({device_type}). Exiting.")
         input("Press Enter to exit...")
         sys.exit()
 
     return selected_release, download_url
+
 
 def choose_specific_release(all_releases):
     print("\nAvailable releases:")
@@ -334,6 +359,7 @@ def choose_specific_release(all_releases):
     print("\n")
     selected_index = int(input("Select a release: ")) - 1
     return all_releases[selected_index]
+
 
 def download_and_extract_latest(selected_release, download_url, temp_directory):
     print("Downloading the latest release...\n")
@@ -351,6 +377,7 @@ def download_and_extract_latest(selected_release, download_url, temp_directory):
 
     return archive_path
 
+
 def count_files_in_directory(directory, ignore_files=[]):
     total_files = 0
     for root, _, files in os.walk(directory):
@@ -358,6 +385,7 @@ def count_files_in_directory(directory, ignore_files=[]):
             if not any(file.startswith(ignore) for ignore in ignore_files):
                 total_files += 1
     return total_files
+
 
 def copy_files_to_destination(destination_folder, source_folder):
     lib_folder = os.path.join(destination_folder, 'lib')
@@ -447,6 +475,7 @@ def get_file_hash(file_path):
 
     return hasher.hexdigest()
 
+
 def files_match(file1, file2):
     BLOCK_SIZE = 65536
     hasher1 = hashlib.sha256()
@@ -471,24 +500,26 @@ def files_match(file1, file2):
 
     return hasher1.hexdigest() == hasher2.hexdigest()
 
+
 def ensure_lib_directory(destination_folder):
     lib_path = os.path.join(destination_folder, "lib")
     if not os.path.exists(lib_path):
         os.makedirs(lib_path)
 
-if __name__ == "__main__":
+
+def main():
     os.system('cls' if os.name == 'nt' else 'clear')
 
     destination_folder = get_circuitpy_drive()
     if destination_folder is None:
-        print("\033[91mCIRCUITPY drive not found. Exiting...")
+        print("CIRCUITPY drive not found. Exiting...")
         decision = input("Press Enter to exit... ").lower()
         sys.exit()
 
     print_welcome_message()
 
     if not is_drive_writable(destination_folder):
-        print("\033[91mCIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")        
+        print("CIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")        
         decision = input("Press Enter to exit... ").lower()
         sys.exit()
 
@@ -500,7 +531,7 @@ if __name__ == "__main__":
         selected_option = get_user_option()
         all_releases = get_all_releases()
     except requests.exceptions.RequestException as e:
-        print("\033[91mError: Internet connection is not available or could not connect to the server.")
+        print("Error: Internet connection is not available or could not connect to the server.")
     
         input("Press Enter to exit...")
         sys.exit()
@@ -517,7 +548,7 @@ if __name__ == "__main__":
 
         zip_download = download_and_extract_latest(selected_release, download_url, temp_directory)
     except requests.exceptions.RequestException as e:
-        print("\033[91mError: Internet connection is not available or could not connect to the server.")
+        print("Error: Internet connection is not available or could not connect to the server.")
         input("Press Enter to exit...")
         sys.exit()
 
@@ -535,3 +566,7 @@ if __name__ == "__main__":
     print_success_message()
 
     input("Press Enter to exit...")
+
+
+if __name__ == "__main__":
+    main()
