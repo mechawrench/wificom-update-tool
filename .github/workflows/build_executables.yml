@@ -54,7 +54,7 @@ jobs:
         if: runner.os != 'macOS'
         run: |
           pip install pyinstaller
-          pyinstaller --icon=wificomlogo1.ico --hidden-import=queue --name wificom-update-installer --onefile run.py
+          pyinstaller --icon=wificomlogo1.ico --hidden-import=queue --name wificom-update-installer run.py
 
       - name: Rename executables
         run: |
