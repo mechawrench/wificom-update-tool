@@ -54,7 +54,7 @@ jobs:
         if: runner.os != 'macOS'
         run: |
           pip install pyinstaller
-          pyinstaller --onefile --icon=wificomlogo1.ico --hidden-import=queue --name wificom-update-installer run.py
+          pyinstaller --icon=wificomlogo1.ico --hidden-import=queue --name wificom-update-installer run.py
 
       - name: Rename executables
         run: |
@@ -106,7 +106,7 @@ jobs:
 
       - name: Build Linux Executable with lower glibc
         run: |
-          pyinstaller --hidden-import=queue --name wificom-update-installer-glibc228 run.py
+          pyinstaller --onefile --hidden-import=queue --name wificom-update-installer-glibc228 run.py
           mv dist/wificom-update-installer-glibc228  linux-wificom-update-installer-glibc228
 
       - name: Upload as Build Artifact
