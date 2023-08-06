@@ -62,15 +62,15 @@ jobs:
             mv dist/wificom-update-installer  linux-wificom-update-installer
           fi
 
+    
+
       - name: Zip files on Windows
         if: runner.os == 'Windows'
         run: |
-          if [ -f dist/wificom-update-installer.exe ]; then
-            mkdir windows-build
-            mv dist/* windows-build/
-            choco install zip -y
-            zip -r windows-wificom-update-installer.zip windows-build
-          fi
+          mkdir windows-build
+          mv dist/* windows-build/
+          choco install zip -y
+          zip -r windows-wificom-update-installer.zip windows-build
 
       - name: Upload as Build Artifact
         uses: actions/upload-artifact@v2
