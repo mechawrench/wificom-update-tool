@@ -106,7 +106,7 @@ jobs:
 
       - name: Build Linux Executable with lower glibc
         run: |
-          pyinstaller --onefile --hidden-import=queue --name wificom-update-installer-glibc228 run.py
+          pyinstaller --hidden-import=queue --name wificom-update-installer-glibc228 run.py
           mv dist/wificom-update-installer-glibc228  linux-wificom-update-installer-glibc228
 
       - name: Upload as Build Artifact
