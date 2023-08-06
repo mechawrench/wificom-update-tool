@@ -68,6 +68,8 @@ jobs:
           if [ -f dist/wificom-update-installer.exe ]; then
             mkdir windows-build
             mv dist/* windows-build/
+            apt-get update
+            apt-get install -y zip
             zip -r windows-wificom-update-installer.zip windows-build
           fi
 
