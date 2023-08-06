@@ -70,7 +70,8 @@ jobs:
           mkdir windows-build
           mv dist/* windows-build/
           choco install zip -y
-          zip -r windows-wificom-update-installer.zip windows-build
+          cd windows-build
+          zip -r ../windows-wificom-update-installer.zip .
 
       - name: Upload as Build Artifact
         uses: actions/upload-artifact@v2
