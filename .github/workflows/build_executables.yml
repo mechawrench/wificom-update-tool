@@ -58,9 +58,9 @@ jobs:
 
       - name: Rename executables
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            mv dist/wificom-update-installer.exe  windows-wificom-update-installer.exe
-          fi
+          # if [ "${{ runner.os }}" == "Windows" ]; then
+          #   mv dist/wificom-update-installer.exe  windows-wificom-update-installer.exe
+          # fi
           if [ "${{ runner.os }}" == "Linux" ]; then
             mv dist/wificom-update-installer  linux-wificom-update-installer
           fi
