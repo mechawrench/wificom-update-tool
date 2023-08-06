@@ -351,63 +351,89 @@ def download_and_extract_latest(selected_release, download_url, temp_directory):
 
     return archive_path
 
+def count_files_in_directory(directory, ignore_files=[]):
+    total_files = 0
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if not any(file.startswith(ignore) for ignore in ignore_files):
+                total_files += 1
+    return total_files
+
 def copy_files_to_destination(destination_folder, source_folder):
     lib_folder = os.path.join(destination_folder, 'lib')
     os.makedirs(lib_folder, exist_ok=True)
 
+    source_to_dest_mapping = {}
     ignore_files = ["boot_out.txt", "secrets.py", "config.py", "board_config.py"]
 
-    total_files = 0
-    copied_files = []  # Initialize the list here
-
-    # Collect the files to ignore
-    existing_files = set()
-    for root, _, files in os.walk(destination_folder):
-        for file in files:
-            dest_file = os.path.join(root, file)
-            if not any(file.startswith(ignore) for ignore in ignore_files):
-                existing_files.add(dest_file)
-
-    # Copy files from source_folder to destination_folder
     for root, _, files in os.walk(source_folder):
-        dest_root = os.path.join(destination_folder, os.path.relpath(root, source_folder))
-        os.makedirs(dest_root, exist_ok=True)
-
         for file in files:
             src_file = os.path.join(root, file)
-            if os.path.isfile(src_file) and not file.startswith('.'):  # Skip hidden files
-                dest_file = os.path.join(dest_root, file)
+            if root.startswith(os.path.join(source_folder, "lib")) and not any(file.startswith(ignore) for ignore in ignore_files):
+                dest_file = os.path.join(destination_folder, os.path.relpath(src_file, source_folder))
+                source_to_dest_mapping[src_file] = dest_file
 
-                # Check if the file should be ignored
-                if os.path.basename(dest_file) in ignore_files:
-                    continue
+    copied_files = []
+    skipped_files = []
 
-                # Check if the file already exists in the destination folder
-                if not os.path.exists(dest_file) or get_file_hash(src_file) != get_file_hash(dest_file):
-                    # If the file doesn't exist in the destination folder or the content is different,
-                    # copy from source_folder to destination_folder
-                    shutil.copy(src_file, dest_file)
-                    copied_files.append(dest_file)
+    total_files = len(source_to_dest_mapping)
+    for src_file, dest_file in source_to_dest_mapping.items():
+        dest_subdir = os.path.dirname(dest_file)
+        os.makedirs(dest_subdir, exist_ok=True)
 
-                total_files += 1
-                print(f"Copying: {len(copied_files)}/{total_files} files", end='\r')
+        if os.path.exists(dest_file) and files_match(src_file, dest_file):
+            skipped_files.append(dest_file)
+        else:
+            if os.path.isdir(src_file):
+                shutil.copytree(src_file, dest_file, dirs_exist_ok=True)
+            else:
+                shutil.copy(src_file, dest_file)
+            copied_files.append(dest_file)
+
+        print(f"Checking: {len(copied_files) + len(skipped_files)}/{total_files} files", end='\r')
 
     print("\nFile copying completed.")
+    print(f"Total files copied: {len(copied_files)}")
+    print(f"Total files skipped: {len(skipped_files)}")
 
-    # Remove .py files from the destination "lib" folder that have corresponding .mpy files in the source
-    for file in existing_files:
-        if file.endswith('.py') and not os.path.basename(file).startswith('._'):
-            mpy_file = os.path.splitext(file)[0] + '.mpy'
-            if os.path.exists(mpy_file):
-                os.remove(file)
-
-    # Remove empty subdirectories inside "lib"
-    for root, dirs, _ in os.walk(lib_folder, topdown=False):
+   # Remove files inside subdirectories of lib that are not present in the source_folder
+    lib_subdirectories = set()
+    for root, dirs, _ in os.walk(lib_folder):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
-            if not os.listdir(dir_path):  # Check if the directory is empty
+            rel_path = os.path.relpath(dir_path, lib_folder)
+            if rel_path not in lib_subdirectories:
+                lib_subdirectories.add(rel_path)
+                if not os.path.exists(os.path.join(source_folder, rel_path)):
+                    continue
+
+    for root, _, files in os.walk(lib_folder):
+        for file in files:
+            dest_file = os.path.join(root, file)
+            if os.path.dirname(os.path.relpath(dest_file, lib_folder)) in lib_subdirectories:
+                src_file = os.path.join(source_folder, os.path.relpath(dest_file, destination_folder))
+                if src_file not in source_to_dest_mapping and not os.path.basename(dest_file).startswith('.'):
+                    os.remove(dest_file)
+
+    # Remove empty subdirectories inside the destination folder, excluding lib/
+    for root, dirs, _ in os.walk(destination_folder, topdown=False):
+        if root == lib_folder:
+            continue
+        for dir_name in dirs:
+            dir_path = os.path.join(root, dir_name)
+            if not dir_name.startswith('.') and not os.listdir(dir_path):
                 os.rmdir(dir_path)
-                
+
+    # Remove .py files in destination/libs/ if corresponding .mpy file exists in source/libs/
+    for root, _, files in os.walk(os.path.join(source_folder, "lib")):
+        for file in files:
+            if file.endswith(".mpy"):
+                source_file_path = os.path.join(root, file)
+                destination_file_path = os.path.join(lib_folder, file[:-4] + ".py")
+                if os.path.exists(destination_file_path):
+                    os.remove(destination_file_path)
+
+
 def get_file_hash(file_path):
     BLOCK_SIZE = 65536
     hasher = hashlib.sha256()
