@@ -9,7 +9,11 @@ import sys
 import tempfile
 import zipfile
 import hashlib
+from tqdm import tqdm
+import send2trash
 
+
+progress = None
 
 def get_readme_content(version):
     api_url = f"https://api.github.com/repos/mechawrench/wificom-lib/contents/README.md?ref={version}"
@@ -97,7 +101,7 @@ def get_valid_releases():
 def is_drive_writable(drive_path):
     if os.name == 'nt':
         try:
-            test_file = os.path.join(drive_path, 'test.txt')
+            test_file = os.path.join(drive_path, 'wificom_installer_test.txt')
             with open(test_file, 'w') as f:
                 f.write('test')
             os.remove(test_file)
@@ -386,56 +390,21 @@ def count_files_in_directory(directory, ignore_files=[]):
                 total_files += 1
     return total_files
 
-def copy_files_to_destination(destination_folder, source_folder):
-    lib_folder = os.path.join(destination_folder, 'lib')
-    os.makedirs(lib_folder, exist_ok=True)
+def delete_empty_directories(directory, source_folder):
+    source_subdirectories = set()
+    for root, dirs, _ in os.walk(os.path.join(source_folder, "lib"), topdown=False):
+        for d in dirs:
+            source_subdirectories.add(os.path.relpath(os.path.join(root, d), source_folder))
 
-    source_to_dest_mapping = {}
-    ignore_files = ["boot_out.txt", "secrets.py", "config.py", "board_config.py"]
-
-    for root, _, files in os.walk(source_folder):
-        for file in files:
-            src_file = os.path.join(root, file)
-            if root.startswith(os.path.join(source_folder, "lib")) and not any(file.startswith(ignore) for ignore in ignore_files):
-                dest_file = os.path.join(destination_folder, os.path.relpath(src_file, source_folder))
-                source_to_dest_mapping[src_file] = dest_file
-
-    copied_files = []
-    skipped_files = []
-
-    total_files = len(source_to_dest_mapping)
-    for src_file, dest_file in source_to_dest_mapping.items():
-        dest_subdir = os.path.dirname(dest_file)
-        os.makedirs(dest_subdir, exist_ok=True)
-
-        if os.path.exists(dest_file) and os.path.isfile(dest_file) and os.path.isfile(src_file):
-            skipped_files.append(dest_file)
-        else:
-            if os.path.isdir(src_file):
-                shutil.copytree(src_file, dest_file, dirs_exist_ok=True)
-            else:
-                shutil.copy2(src_file, dest_file)
-            copied_files.append(dest_file)
-
-        print(f"Checking: {len(copied_files) + len(skipped_files)}/{total_files} files", end='\r')
-
-    print("\nFile copying completed.")
-    print(f"Total files copied: {len(copied_files)}")
-    print(f"Total files skipped: {len(skipped_files)}")
-
-    # Remove .py files in destination/libs/ if corresponding .mpy file exists in source/libs/ and lib/directory exists in source_folder/libs
-    for root, _, files in os.walk(os.path.join(source_folder, "lib")):
-        for file in files:
-            if file.endswith(".mpy"):
-                destination_file_path = os.path.join(lib_folder, os.path.relpath(root, os.path.join(source_folder, "lib")), file[:-4] + ".py")
-                if os.path.exists(destination_file_path):
-                    os.remove(destination_file_path)
-
-    # Post-processing step to delete folders inside lib in the destination that don't exist in the source files
-    for root, dirs, _ in os.walk(lib_folder, topdown=False):
-        relative_path = os.path.relpath(root, lib_folder)
-        if relative_path and not os.listdir(root):  # Check if the directory is empty and not the root lib folder
-            shutil.rmtree(root)
+    for root, dirs, _ in os.walk(directory, topdown=False):
+        for d in dirs:
+            dir_path = os.path.join(root, d)
+            rel_dir_path = os.path.relpath(dir_path, directory)
+            if rel_dir_path != '.' and rel_dir_path not in source_subdirectories and not os.listdir(dir_path):
+                try:
+                    shutil.rmtree(dir_path)
+                except OSError:
+                    pass
 
 def get_file_hash(file_path):
     BLOCK_SIZE = 65536
@@ -449,7 +418,6 @@ def get_file_hash(file_path):
             hasher.update(data)
 
     return hasher.hexdigest()
-
 
 def files_match(file1, file2):
     BLOCK_SIZE = 65536
@@ -475,6 +443,131 @@ def files_match(file1, file2):
 
     return hasher1.hexdigest() == hasher2.hexdigest()
 
+def count_files_in_directory(directory, ignore_files=[]):
+    total_files = 0
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if not any(file.startswith(ignore) for ignore in ignore_files) and not file.startswith('.'):
+                total_files += 1
+    return total_files
+
+def count_added_and_modified_files(source_folder, destination_folder):
+    added_files = 0
+    modified_files = 0
+
+    for root, _, files in os.walk(source_folder):
+        for file in files:
+            if file not in ['adafruit_requests.py', 'adafruit_displayio_ssd1306.py']:
+                dest_file = os.path.join(destination_folder, os.path.relpath(root, source_folder), file)
+                if not os.path.exists(dest_file):
+                    added_files += 1
+                elif not files_match(os.path.join(root, file), dest_file):
+                    modified_files += 1
+
+    return added_files, modified_files
+
+def copy_files_to_destination(destination_folder, source_folder):
+    global progress  # Use the global progress bar here
+
+    ensure_lib_directory(destination_folder)
+
+    lib_source_folder = os.path.join(source_folder, 'lib')
+    lib_destination_folder = os.path.join(destination_folder, 'lib')
+
+    deleted_files = []
+    modified_files = []
+    added_files = []
+
+    # Delete files named adafruit_requests.py or adafruit_displayio_ssd1306.py permanently in lib_destination_folder
+    for root, dirs, files in os.walk(lib_destination_folder, topdown=False):
+        for file in files:
+            if file in ['adafruit_requests.py', 'adafruit_displayio_ssd1306.py']:
+                file_path = os.path.join(root, file)
+                os.remove(file_path)
+                deleted_files.append(file_path)
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            if not os.path.basename(dir).startswith('.') and not os.path.islink(dir_path) and not os.listdir(dir_path):
+                os.rmdir(dir_path, onerror=handle_rmtree_error)
+
+    # Count the number of added and modified files in the lib folder
+    added_files_count, modified_files_count = count_added_and_modified_files(lib_source_folder, lib_destination_folder)
+
+    # Count the root files in the destination folder (excluding temporary files and hidden files)
+    root_files_count = count_files_in_directory(destination_folder, ignore_files=['lib', '.TemporaryItems', '.Trashes'])
+
+    total_files = added_files_count + modified_files_count + root_files_count
+
+    progress = tqdm(total=total_files, desc="Copying files")
+
+    # Copy files from lib_source_folder to lib_destination_folder
+    copied_files_count = 0
+    for _ in copy_files_from_source(lib_source_folder, lib_destination_folder):
+        copied_files_count += 1
+        if copied_files_count <= added_files_count:
+            added_files.append(_)
+        else:
+            modified_files.append(_)
+
+    progress.close()  # Close the progress bar after copying is completed
+
+    # Delete any empty directories
+    delete_empty_directories(destination_folder, source_folder)
+
+    print("File copying completed.")
+    print(f"Added files: {len(added_files)}")
+    print(f"Modified files: {len(modified_files)}")
+    print(f"Deleted files: {len(deleted_files)}")
+
+    return added_files, modified_files, deleted_files
+
+def copy_files_from_source(source_folder, destination_folder):
+    total_files = sum(len(files) for _, _, files in os.walk(source_folder))
+
+    for root, dirs, files in os.walk(source_folder):
+        for file in files:
+            if file not in ['adafruit_requests.py', 'adafruit_displayio_ssd1306.py']:
+                dest_file = os.path.join(destination_folder, os.path.relpath(root, source_folder), file)
+                os.makedirs(os.path.dirname(dest_file), exist_ok=True)
+                shutil.copy2(os.path.join(root, file), dest_file)
+                yield
+                total_files -= 1
+                progress.update(1)
+
+    # Count the root files in the destination folder (excluding temporary files and hidden files)
+    root_files_count = count_files_in_directory(destination_folder, ignore_files=['lib', '.TemporaryItems', '.Trashes'])
+    for _ in range(root_files_count):
+        progress.update(1)
+
+def delete_empty_directories(directory, source_folder):
+    source_subdirectories = set()
+    for root, dirs, _ in os.walk(os.path.join(source_folder, "lib"), topdown=False):
+        for d in dirs:
+            source_subdirectories.add(os.path.relpath(os.path.join(root, d), source_folder))
+    source_subdirectories.add('.Trashes');
+    source_subdirectories.add('.TemporaryItems');
+
+    deleted_directories = []
+    for root, dirs, _ in os.walk(directory, topdown=False):
+        for d in dirs:
+            dir_path = os.path.join(root, d)
+            rel_dir_path = os.path.relpath(dir_path, directory)
+            if rel_dir_path != '.' and rel_dir_path not in source_subdirectories and not os.listdir(dir_path):
+                try:
+                    shutil.rmtree(dir_path)
+                    deleted_directories.append(dir_path)
+                except OSError:
+                    pass
+
+def handle_rmtree_error(func, path, exc_info):
+    # Handle errors when deleting files/folders that might not exist
+    # or have special characters in their names
+    if not os.path.exists(path):
+        return
+    try:
+        func(path)
+    except OSError:
+        pass
 
 def ensure_lib_directory(destination_folder):
     lib_path = os.path.join(destination_folder, "lib")
