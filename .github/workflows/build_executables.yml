@@ -54,43 +54,34 @@ jobs:
         if: runner.os != 'macOS'
         run: |
           pip install pyinstaller
-          pyinstaller --icon=wificomlogo1.ico --hidden-import=queue --name wificom-update-installer run.py
+          pyinstaller --icon=wificomlogo1.ico --onefile --compress=0 --hidden-import=queue --name wificom-update-installer run.py
 
       - name: Rename executables
         run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            mv dist/wificom-update-installer.exe  windows-wificom-update-installer.exe
+          fi
           if [ "${{ runner.os }}" == "Linux" ]; then
             mv dist/wificom-update-installer  linux-wificom-update-installer
           fi
-
-    
-
-      - name: Zip files on Windows
-        if: runner.os == 'Windows'
-        run: |
-          mkdir windows-build
-          mv dist/* windows-build/
-          choco install zip -y
-          cd windows-build
-          zip -r ../windows-wificom-update-installer.zip .
 
       - name: Upload as Build Artifact
         uses: actions/upload-artifact@v2
         with:
           name: WiFiCom-Update-Installer-${{ runner.os }}
           path: |
-            linux-wificom-update-installer
+            windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
+            linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
             macos-wificom-update-installer.zip
-            windows-wificom-update-installer.zip
 
       - name: Attach to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            linux-wificom-update-installer
+            windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
+            linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
             macos-wificom-update-installer.zip
-            windows-wificom-update-installer.zip
-
   build-linux-glibc:
     runs-on: ubuntu-latest
     container:
