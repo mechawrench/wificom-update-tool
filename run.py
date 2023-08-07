@@ -488,7 +488,7 @@ def copy_files_to_destination(destination_folder, source_folder):
         for dir in dirs:
             dir_path = os.path.join(root, dir)
             if not os.path.basename(dir).startswith('.') and not os.path.islink(dir_path) and not os.listdir(dir_path):
-                os.rmdir(dir_path, onerror=handle_rmtree_error)
+                os.rmdir(dir_path)
 
     # Count the number of added and modified files in the lib folder
     added_files_count, modified_files_count = count_added_and_modified_files(lib_source_folder, lib_destination_folder)
