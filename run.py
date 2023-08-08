@@ -8,14 +8,7 @@ import shutil
 import string
 import sys
 import tempfile
-from urllib.request import urlretrieve
 import zipfile
-
-def get_readme_content(version):
-    api_url = f"https://api.github.com/repos/mechawrench/wificom-lib/contents/README.md?ref={version}"
-    response = requests.get(api_url).json()
-    readme_content = requests.get(response['download_url']).text
-    return readme_content
 
 def read_circuitpython_version_from_boot_out(drive_path):
     try:
@@ -35,7 +28,7 @@ def read_board_info(file_path: str) -> str:
 def extract_board_id(board_info: str):
     # Extract board ID using regular expression
     board_id_search = re.search(r'Board ID:(.+)', board_info)
-    
+
     if board_id_search:
         board_id = board_id_search.group(1).strip()
         return board_id
@@ -56,9 +49,6 @@ def get_circuitpy_drive():
                 if volume_name_buf.value == 'CIRCUITPY':
                     return f"{letter}:\\"
     return None
-
-def is_drive_writable(drive_path):
-    return os.access(drive_path, os.W_OK)
 
 def get_valid_releases():
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
@@ -174,7 +164,7 @@ def get_all_releases():
     min_version = "0.9.0"
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
     releases = requests.get(api_url).json()
-    
+
     version_regex = re.compile(r"^v?\d+(\.\d+)*(-[a-zA-Z0-9]+)?$")
     valid_releases = [release for release in releases if version_regex.match(release['tag_name']) and compare_versions(release['tag_name'], min_version)]
 
@@ -193,28 +183,16 @@ def extract_device_type(board_id: str):
     else:
         print("Invalid board ID. Exiting...")
         sys.exit()
-        
-def extract_sources_json(zip_file_path, extract_path):
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        zip_ref.extract("sources.json", extract_path)
-
-def choose_release(releases):
-    print("\nAvailable releases:")
-    for i, release in enumerate(releases):
-        print(f"{i + 1}. {release['tag_name']} ({'Pre-release' if release['prerelease'] else 'Release'})")
-    print("\n")
-    selected_index = int(input("Select a release: ")) - 1
-    return releases[selected_index]
 
 def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version):
     with open(sources_json_path, 'r') as f:
         sources = json.load(f)
-    
+
     if 'circuitpython' not in sources:
         print("\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
         print("Please check on Discord/GitHub for a recommended version.")
         decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
-        
+
         if decision != 'yes':
             sys.exit()
     else:
@@ -224,16 +202,10 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
             print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
             print("It is advised to upgrade/downgrade your CircuitPython version.")
             decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
-            
+
             if decision != 'yes':
                 shutil.rmtree(temp_directory)
                 sys.exit()
-
-def copy_file_if_not_exists(src, dest):
-    if not os.path.exists(dest):
-        shutil.copy(src, dest)
-    else:
-        print(f"\nSkipping existing file: {os.path.basename(dest)}")
 
 def print_welcome_message():
     intro = '''\033[32m
@@ -267,13 +239,6 @@ def get_user_option():
 
     selected_option = int(input("\nSelect an option: "))
     return selected_option
-
-def get_download_url(release, device_type):
-    assets = release['assets']
-    for asset in assets:
-        if device_type in asset['name']:
-            return asset['browser_download_url']
-    return None
 
 def get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type):
     download_url = None
@@ -355,11 +320,11 @@ def copy_files_to_destination(destination_folder, extract_path):
 
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
-    
+
     print_welcome_message()
     destination_folder = get_circuitpy_drive()
     circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
-    
+
     valid_releases = get_valid_releases()
     selected_option = get_user_option()
     all_releases = get_all_releases()
@@ -373,7 +338,7 @@ def main():
 
     temp_directory = tempfile.mkdtemp()
     archive_path = download_archive(download_url, os.path.join(temp_directory, selected_release.get('sha', selected_release.get('name', '')).replace('/', '_')))
-    
+
     lib_folders_to_delete = get_folders_in_lib(archive_path)
     delete_folders_in_lib(destination_folder, lib_folders_to_delete)
 
