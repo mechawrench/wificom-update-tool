@@ -1,4 +1,1 @@
 requests
-chardet
-tqdm
-send2trash
