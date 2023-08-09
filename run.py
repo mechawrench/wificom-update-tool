@@ -240,14 +240,15 @@ def get_user_option():
     selected_option = int(input("\nSelect an option: "))
     return selected_option
 
-def get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type):
+def get_selected_release_and_url(selected_option, device_type):
     download_url = None
     selected_release = None
 
     if selected_option == 1:
-        latest_release, latest_pre_release = valid_releases
+        latest_release, latest_pre_release = get_valid_releases()
         selected_release = latest_release
     elif selected_option == 2:
+        all_releases = get_all_releases()
         selected_release = choose_specific_release(all_releases)
     elif selected_option == 3:
          [selected_release_version, selected_release] = get_latest_commit()
@@ -333,9 +334,7 @@ def main():
     board_id = extract_board_id(board_info)
     device_type = extract_device_type(board_id)
 
-    valid_releases = get_valid_releases()
-    all_releases = get_all_releases()
-    selected_release, download_url = get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type)
+    selected_release, download_url = get_selected_release_and_url(selected_option, device_type)
 
     temp_directory = tempfile.mkdtemp()
     archive_path = download_archive(download_url, os.path.join(temp_directory, selected_release.get('sha', selected_release.get('name', '')).replace('/', '_')))
