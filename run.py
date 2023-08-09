@@ -216,11 +216,19 @@ def print_welcome_message():
 
 def print_success_message():
     success = '''\033[32m
-    Successfully Installed/Updated your WiFiCom!  Please eject the drive and restart your device.
+    Successfully installed/updated your WiFiCom!
 
     Ensure you've updated secrets.py before getting started.
+    If this is your first time:
+      * Create an account and a "new WiFiCom" on wificom.dev
+      * Click "Download secrets.py" on the page that appears
+      * Save the file to your CIRCUITPY drive
+      * Edit the file to add your WiFi SSID and password
 
-    Enjoy!
+    Please eject (safely remove) the drive from your computer
+    and restart your device.
+    If your WiFiCom says "Drive enabled" on the screen,
+    it will restart automatically when you select another option.
     \033[0m'''
     print(success)
 
