@@ -146,7 +146,7 @@ def compare_versions(version1, version2):
     return version_tuple(version1) >= version_tuple(version2)
 
 def get_all_releases():
-    min_version = "0.9.0"
+    min_version = "0.10.0"
     api_url = "https://api.github.com/repos/mechawrench/wificom-lib/releases"
     releases = requests.get(api_url).json()
 
