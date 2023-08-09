@@ -37,15 +37,15 @@ jobs:
       - name: Build macOS Launcher Script
         if: runner.os == 'macOS'
         run: |
-          echo '#!/bin/bash' > wificom-update-installer.command
-          echo 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"' >> wificom-update-installer.command
-          echo 'cd "$SCRIPT_DIR"' >> wificom-update-installer.command
-          echo 'python -m pip install --upgrade pip' >> wificom-update-installer.command
-          echo 'pip install -r requirements.txt' >> wificom-update-installer.command
-          echo 'python "run.py"' >> wificom-update-installer.command
-          chmod +x wificom-update-installer.command
+          echo '#!/bin/bash' > wificom-update-tool.command
+          echo 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"' >> wificom-update-tool.command
+          echo 'cd "$SCRIPT_DIR"' >> wificom-update-tool.command
+          echo 'python -m pip install --upgrade pip' >> wificom-update-tool.command
+          echo 'pip install -r requirements.txt' >> wificom-update-tool.command
+          echo 'python "run.py"' >> wificom-update-tool.command
+          chmod +x wificom-update-tool.command
           mkdir macos-package
-          cp wificom-update-installer.command macos-package/
+          cp wificom-update-tool.command macos-package/
           cp run.py macos-package/
           cp requirements.txt macos-package/
           zip -r wificom-update-tool-macos.zip macos-package/
