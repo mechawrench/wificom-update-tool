@@ -8,6 +8,7 @@ import shutil
 import string
 import sys
 import tempfile
+import webbrowser
 import zipfile
 
 def read_circuitpython_version_from_boot_out(drive_path):
@@ -183,13 +184,21 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
         recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id, device_type)
 
         if recommended_circuitpython_version != circuitpython_version:
+            uf2_url = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/{board_id}/en_US/adafruit-circuitpython-{board_id}-en_US-{recommended_circuitpython_version}.uf2"
             print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
             print("It is advised to upgrade/downgrade your CircuitPython version.")
             print("You can download the necessary UF2 file from here:")
-            print(f"https://adafruit-circuit-python.s3.amazonaws.com/bin/{board_id}/en_US/adafruit-circuitpython-{board_id}-en_US-{recommended_circuitpython_version}.uf2")
-            decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
-
-            if decision != 'yes':
+            print(uf2_url)
+            print("\n1. Download UF2 file (opens in a browser)")
+            print("2. Continue anyway with currently-installed CircuitPython version")
+            print("3. Exit")
+            selected_option = int(input("\nSelect an option: "))
+            if selected_option == 1:
+                webbrowser.open_new_tab(uf2_url)
+                sys.exit()
+            elif selected_option == 2:
+                return
+            else:
                 sys.exit()
 
 def print_welcome_message():
