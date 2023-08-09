@@ -82,22 +82,6 @@ def is_drive_writable(drive_path):
     else:
         return os.access(drive_path, os.W_OK)
 
-def delete_folders_in_lib(destination_folder, lib_folders_to_delete):
-    lib_path = os.path.join(destination_folder, "lib")
-    for folder in lib_folders_to_delete:
-        folder_path = os.path.join(lib_path, folder)
-        if os.path.exists(folder_path) and os.path.isdir(folder_path):
-            shutil.rmtree(folder_path)
-
-def get_folders_in_lib(zip_file_path):
-    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        lib_folders = set()
-        for file_info in zip_ref.infolist():
-            if file_info.filename.startswith("lib/") and file_info.is_dir():
-                folder_name = file_info.filename.split('/')[1]
-                lib_folders.add(folder_name)
-        return lib_folders
-
 def download_archive(url, save_path):
     response = requests.get(url, stream=True)
     response.raise_for_status()
@@ -354,8 +338,6 @@ def main():
     check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version)
 
     print("Writing...")
-    lib_folders_to_delete = get_folders_in_lib(archive_path)
-    delete_folders_in_lib(destination_folder, lib_folders_to_delete)
     copy_files_to_destination(destination_folder, extract_path)
 
     shutil.rmtree(temp_directory)
