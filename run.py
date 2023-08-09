@@ -185,10 +185,11 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
         if recommended_circuitpython_version != circuitpython_version:
             print(f"\nThe recommended CircuitPython version for this release is {recommended_circuitpython_version} while you have {circuitpython_version} installed.")
             print("It is advised to upgrade/downgrade your CircuitPython version.")
+            print("You can download the necessary UF2 file from here:")
+            print(f"https://adafruit-circuit-python.s3.amazonaws.com/bin/{board_id}/en_US/adafruit-circuitpython-{board_id}-en_US-{recommended_circuitpython_version}.uf2")
             decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
 
             if decision != 'yes':
-                shutil.rmtree(temp_directory)
                 sys.exit()
 
 def print_welcome_message():
