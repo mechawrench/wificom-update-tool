@@ -70,8 +70,8 @@ jobs:
         with:
           name: WiFiCom-Update-Tool-${{ runner.os }}
           path: |
-            wificom-update-tool${{ runner.os == 'Windows' && '.exe' || '' }}
-            wificom-update-tool-linux${{ runner.os == 'Linux' && '' || '' }}
+            wificom-update-tool.exe
+            wificom-update-tool-linux
             wificom-update-tool-macos.zip
 
       - name: Attach to release
@@ -79,8 +79,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            wificom-update-tool${{ runner.os == 'Windows' && '.exe' || '' }}
-            wificom-update-tool-linux${{ runner.os == 'Linux' && '' || '' }}
+            wificom-update-tool.exe
+            wificom-update-tool-linux
             wificom-update-tool-macos.zip
   build-linux-glibc:
     runs-on: ubuntu-latest
