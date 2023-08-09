@@ -8,6 +8,7 @@ import shutil
 import string
 import sys
 import tempfile
+import traceback
 import webbrowser
 import zipfile
 
@@ -364,7 +365,15 @@ def main():
 
     print_success_message()
 
-    input("Press Enter to exit...")
+def main_wrap():
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nControl-C exits from console apps.")
+    except Exception as e:
+        print("An error occurred:\n")
+        traceback.print_exception(e)
+    input("\nPress Enter to exit...")
 
 if __name__ == "__main__":
-    main()
+    main_wrap()
