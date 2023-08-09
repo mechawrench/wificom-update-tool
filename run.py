@@ -325,29 +325,29 @@ def main():
     destination_folder = get_circuitpy_drive()
     circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
 
-    valid_releases = get_valid_releases()
     selected_option = get_user_option()
-    all_releases = get_all_releases()
 
+    print("Checking...")
     boot_out_path = os.path.join(destination_folder, "boot_out.txt")
     board_info = read_board_info(boot_out_path)
     board_id = extract_board_id(board_info)
     device_type = extract_device_type(board_id)
 
+    valid_releases = get_valid_releases()
+    all_releases = get_all_releases()
     selected_release, download_url = get_selected_release_and_url(selected_option, valid_releases, all_releases, device_type)
 
     temp_directory = tempfile.mkdtemp()
     archive_path = download_archive(download_url, os.path.join(temp_directory, selected_release.get('sha', selected_release.get('name', '')).replace('/', '_')))
-
-    lib_folders_to_delete = get_folders_in_lib(archive_path)
-    delete_folders_in_lib(destination_folder, lib_folders_to_delete)
-
     extract_path = os.path.join(temp_directory, "extracted")
     extract_all_from_archive(archive_path, extract_path)
 
     sources_json_path = os.path.join(extract_path, 'sources.json')
     check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version)
 
+    print("Writing...")
+    lib_folders_to_delete = get_folders_in_lib(archive_path)
+    delete_folders_in_lib(destination_folder, lib_folders_to_delete)
     copy_files_to_destination(destination_folder, extract_path)
 
     shutil.rmtree(temp_directory)
