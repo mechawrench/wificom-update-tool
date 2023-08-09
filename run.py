@@ -72,7 +72,7 @@ def get_valid_releases():
 def is_drive_writable(drive_path):
     if os.name == 'nt':
         try:
-            test_file = os.path.join(drive_path, 'test.txt')
+            test_file = os.path.join(drive_path, 'wificom_updater_test.txt')
             with open(test_file, 'w') as f:
                 f.write('test')
             os.remove(test_file)
@@ -321,9 +321,18 @@ def copy_files_to_destination(destination_folder, extract_path):
 
 def main():
     os.system('cls' if os.name == 'nt' else 'clear')
-
     print_welcome_message()
+
     destination_folder = get_circuitpy_drive()
+    if destination_folder is None:
+        print("CIRCUITPY drive not found.")
+        input("Press Enter to exit...")
+        sys.exit()
+    if not is_drive_writable(destination_folder):
+        print("CIRCUITPY drive is read-only. Please use Drive mode on the WiFiCom.")
+        input("Press Enter to exit...")
+        sys.exit()
+
     circuitpython_version = read_circuitpython_version_from_boot_out(destination_folder)
 
     selected_option = get_user_option()
