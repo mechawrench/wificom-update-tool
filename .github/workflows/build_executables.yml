@@ -37,18 +37,18 @@ jobs:
       - name: Build macOS Launcher Script
         if: runner.os == 'macOS'
         run: |
-          echo '#!/bin/bash' > wificom-update-installer.command
-          echo 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"' >> wificom-update-installer.command
-          echo 'cd "$SCRIPT_DIR"' >> wificom-update-installer.command
-          echo 'python -m pip install --upgrade pip' >> wificom-update-installer.command
-          echo 'pip install -r requirements.txt' >> wificom-update-installer.command
-          echo 'python "run.py"' >> wificom-update-installer.command
-          chmod +x wificom-update-installer.command
+          echo '#!/bin/bash' > wificom-update-tool.command
+          echo 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"' >> wificom-update-tool.command
+          echo 'cd "$SCRIPT_DIR"' >> wificom-update-tool.command
+          echo 'python -m pip install --upgrade pip' >> wificom-update-tool.command
+          echo 'pip install -r requirements.txt' >> wificom-update-tool.command
+          echo 'python "run.py"' >> wificom-update-tool.command
+          chmod +x wificom-update-tool.command
           mkdir macos-package
-          cp wificom-update-installer.command macos-package/
+          cp wificom-update-tool.command macos-package/
           cp run.py macos-package/
           cp requirements.txt macos-package/
-          zip -r macos-wificom-update-installer.zip macos-package/
+          zip -r wificom-update-tool-macos.zip macos-package/
 
       - name: Build Windows and Linux Executable
         if: runner.os != 'macOS'
@@ -59,29 +59,29 @@ jobs:
       - name: Rename executables
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
-            mv dist/wificom-update-installer.exe  windows-wificom-update-installer.exe
+            mv dist/wificom-update-installer.exe  wificom-update-tool.exe
           fi
           if [ "${{ runner.os }}" == "Linux" ]; then
-            mv dist/wificom-update-installer  linux-wificom-update-installer
+            mv dist/wificom-update-installer  wificom-update-tool-linux
           fi
 
       - name: Upload as Build Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: WiFiCom-Update-Installer-${{ runner.os }}
+          name: WiFiCom-Update-Tool-${{ runner.os }}
           path: |
-            windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
-            linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
-            macos-wificom-update-installer.zip
+            wificom-update-tool.exe
+            wificom-update-tool-linux
+            wificom-update-tool-macos.zip
 
       - name: Attach to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            windows-wificom-update-installer${{ runner.os == 'Windows' && '.exe' || '' }}
-            linux-wificom-update-installer${{ runner.os == 'Linux' && '' || '' }}
-            macos-wificom-update-installer.zip
+            wificom-update-tool.exe
+            wificom-update-tool-linux
+            wificom-update-tool-macos.zip
   build-linux-glibc:
     runs-on: ubuntu-latest
     container:
@@ -107,16 +107,16 @@ jobs:
       - name: Build Linux Executable with lower glibc
         run: |
           pyinstaller --onefile --hidden-import=queue --name wificom-update-installer-glibc228 run.py
-          mv dist/wificom-update-installer-glibc228  linux-wificom-update-installer-glibc228
+          mv dist/wificom-update-installer-glibc228  wificom-update-tool-linux-glibc228
 
       - name: Upload as Build Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: WiFiCom-Update-Installer-Linux-glibc228
-          path: linux-wificom-update-installer-glibc228
+          name: WiFiCom-Update-Tool-Linux-glibc228
+          path: wificom-update-tool-linux-glibc228
 
       - name: Attach to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: linux-wificom-update-installer-glibc228
+          files: wificom-update-tool-linux-glibc228
