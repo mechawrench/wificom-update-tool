@@ -372,7 +372,7 @@ def main_wrap():
         print("\nControl-C exits from console apps.")
     except Exception as e:
         print("An error occurred:\n")
-        traceback.print_exception(e, limit=6, chain=False)
+        traceback.print_exc(limit=6, chain=False)
     input("\nPress Enter to exit...")
 
 if __name__ == "__main__":
