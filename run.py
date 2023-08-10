@@ -42,6 +42,9 @@ def get_circuitpy_drive():
         posix_drive_path = '/Volumes/CIRCUITPY'
         if os.path.exists(posix_drive_path):
             return posix_drive_path
+        posix_drive_path = f"/run/media/{os.getlogin()}/CIRCUITPY"
+        if os.path.exists(posix_drive_path):
+            return posix_drive_path
     elif os.name == 'nt':
         kernel32 = ctypes.windll.kernel32
         volume_name_buf = ctypes.create_unicode_buffer(1024)
