@@ -373,7 +373,7 @@ def main_wrap():
         main()
     except KeyboardInterrupt:
         print("\nControl-C exits from console apps.")
-    except Exception as e:
+    except:
         print("An error occurred:\n")
         traceback.print_exc(limit=6, chain=False)
     input("\nPress Enter to exit...")
