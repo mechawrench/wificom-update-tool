@@ -11,6 +11,11 @@ import tempfile
 import webbrowser
 import zipfile
 
+try:
+    from update_tool_version import UPDATE_TOOL_VERSION
+except ImportError:
+    UPDATE_TOOL_VERSION = None
+
 def read_circuitpython_version_from_boot_out(drive_path):
     try:
         with open(os.path.join(drive_path, "boot_out.txt"), "r") as boot_out_file:
@@ -205,8 +210,14 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
                 sys.exit()
 
 def print_welcome_message():
-    intro = '''\033[32m
-    Welcome to the WiFiCom Update/Installer Tool!
+    if UPDATE_TOOL_VERSION is None:
+        version_string = "!"
+    elif len(UPDATE_TOOL_VERSION) <= 16:
+        version_string = f" {UPDATE_TOOL_VERSION}!"
+    else:
+        version_string = f"!\n    {UPDATE_TOOL_VERSION}"
+    intro = f'''\033[32m
+    Welcome to the WiFiCom Update/Installer Tool{version_string}
 
     This script will help you update your WiFiCom by downloading the
     latest version of the wificom-lib and updating the files on the
