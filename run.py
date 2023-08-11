@@ -228,8 +228,8 @@ def print_success_message():
         and follow the instructions there.
 
     Please eject (safely remove) the drive from your computer, then:
-    * Full units with "Drive enabled": choose an option from the menu
-    * Screenless units / "Dev mode": disconnect and reconnect power
+    * Full units in "Drive Mode": choose an option from the menu
+    * Screenless units / "Dev Mode": disconnect and reconnect power
     \033[0m'''
     print(success)
 
