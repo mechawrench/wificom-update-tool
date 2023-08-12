@@ -224,14 +224,12 @@ def print_success_message():
     Ensure you've updated secrets.py before getting started.
     If this is your first time:
       * Create an account and a "new WiFiCom" on wificom.dev
-      * Click "Download secrets.py" on the page that appears
-      * Save the file to your CIRCUITPY drive
-      * Edit the file to add your WiFi SSID and password
+      * Go to "Credentials Download" on the page that appears,
+        and follow the instructions there.
 
-    Please eject (safely remove) the drive from your computer
-    and restart your device.
-    If your WiFiCom says "Drive enabled" on the screen,
-    it will restart automatically when you select another option.
+    Please eject (safely remove) the drive from your computer, then:
+    * Full units in "Drive Mode": choose an option from the menu
+    * Screenless units / "Dev Mode": disconnect and reconnect power
     \033[0m'''
     print(success)
 
