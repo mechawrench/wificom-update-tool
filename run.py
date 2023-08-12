@@ -8,6 +8,7 @@ import shutil
 import string
 import sys
 import tempfile
+import traceback
 import webbrowser
 import zipfile
 
@@ -235,14 +236,12 @@ def print_success_message():
     Ensure you've updated secrets.py before getting started.
     If this is your first time:
       * Create an account and a "new WiFiCom" on wificom.dev
-      * Click "Download secrets.py" on the page that appears
-      * Save the file to your CIRCUITPY drive
-      * Edit the file to add your WiFi SSID and password
+      * Go to "Credentials Download" on the page that appears,
+        and follow the instructions there.
 
-    Please eject (safely remove) the drive from your computer
-    and restart your device.
-    If your WiFiCom says "Drive enabled" on the screen,
-    it will restart automatically when you select another option.
+    Please eject (safely remove) the drive from your computer, then:
+    * Full units in "Drive Mode": choose an option from the menu
+    * Screenless units / "Dev Mode": disconnect and reconnect power
     \033[0m'''
     print(success)
 
@@ -319,7 +318,7 @@ def copy_files_to_destination(destination_folder, extract_path):
         dst_item = os.path.join(dst_lib_folder, item_name)
         if os.path.isdir(src_item):
             if os.path.exists(dst_item):
-                shutil.rmtree(dst_item)
+                shutil.rmtree(dst_item, ignore_errors=True)
             shutil.copytree(src_item, dst_item)
         elif os.path.isfile(src_item):
             shutil.copy2(src_item, dst_item)
@@ -378,7 +377,15 @@ def main():
 
     print_success_message()
 
-    input("Press Enter to exit...")
+def main_wrap():
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nControl-C exits from console apps.")
+    except:
+        print("An error occurred:\n")
+        traceback.print_exc(limit=6, chain=False)
+    input("\nPress Enter to exit...")
 
 if __name__ == "__main__":
-    main()
+    main_wrap()
