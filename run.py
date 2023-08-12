@@ -306,7 +306,7 @@ def copy_files_to_destination(destination_folder, extract_path):
         dst_item = os.path.join(dst_lib_folder, item_name)
         if os.path.isdir(src_item):
             if os.path.exists(dst_item):
-                shutil.rmtree(dst_item)
+                shutil.rmtree(dst_item, ignore_errors=True)
             shutil.copytree(src_item, dst_item)
         elif os.path.isfile(src_item):
             shutil.copy2(src_item, dst_item)
