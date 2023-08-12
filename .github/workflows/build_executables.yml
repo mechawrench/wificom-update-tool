@@ -20,6 +20,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2.4.2
+        with:
+          fetch-depth: 0
+
+      - name: Save version info
+        shell: bash
+        run: |
+          echo "UPDATE_TOOL_VERSION = '$(git describe --tags --always)'" > update_tool_version.py
 
       - name: Set up Python
         uses: actions/setup-python@v3.1.0
@@ -47,6 +54,7 @@ jobs:
           mkdir macos-package
           cp wificom-update-tool.command macos-package/
           cp run.py macos-package/
+          cp update_tool_version.py macos-package/
           cp requirements.txt macos-package/
           zip -r wificom-update-tool-macos.zip macos-package/
 
