@@ -102,11 +102,11 @@ def download_archive(url, save_path):
 
     return save_path
 
-def get_recommended_circuitpython_version(sources_json_path, board_id, device_type):
+def get_recommended_circuitpython_version(sources_json_path, board_id):
     with open(sources_json_path, 'r') as f:
         sources = json.load(f)
 
-    recommended_version = sources['circuitpython'].get('picow' if device_type == 'raspberry_pi_pico_w' else 'nina')
+    recommended_version = sources['circuitpython'].get('picow' if board_id == 'raspberry_pi_pico_w' else 'nina')
     return recommended_version
 
 def get_latest_commit():
@@ -129,9 +129,9 @@ def get_resource_identifier(resource):
     else:
         return 'default_value'
 
-def get_download_url_from_commit_hash(resource, device_type):
+def get_download_url_from_commit_hash(resource, board_id):
     bucket_name = 'wificom-lib'
-    device_suffix = '_picow.zip' if device_type == 'raspberry_pi_pico_w' else '_nina.zip'
+    device_suffix = '_picow.zip' if board_id == 'raspberry_pi_pico_w' else '_nina.zip'
 
     zip_filename =  bucket_name + '_' + get_resource_identifier(resource) + device_suffix
 
@@ -169,16 +169,7 @@ def save_installed_commit_hash(commit_hash, destination_folder):
     with open(installed_version_file, 'w') as f:
         f.write(commit_hash)
 
-def extract_device_type(board_id: str):
-    if 'arduino_nano_rp2040_connect' in board_id:
-        return 'arduino_nano_rp2040_connect'
-    elif 'raspberry_pi_pico_w' in board_id:
-        return 'raspberry_pi_pico_w'
-    else:
-        print("Invalid board ID. Exiting...")
-        sys.exit()
-
-def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version):
+def check_circuitpython_key(sources_json_path, board_id, circuitpython_version):
     with open(sources_json_path, 'r') as f:
         sources = json.load(f)
 
@@ -190,7 +181,7 @@ def check_circuitpython_key(sources_json_path, board_id, device_type, circuitpyt
         if decision != 'yes':
             sys.exit()
     else:
-        recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id, device_type)
+        recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id)
 
         if recommended_circuitpython_version != circuitpython_version:
             uf2_url = f"https://adafruit-circuit-python.s3.amazonaws.com/bin/{board_id}/en_US/adafruit-circuitpython-{board_id}-en_US-{recommended_circuitpython_version}.uf2"
@@ -233,7 +224,7 @@ def print_success_message():
     success = '''\033[32m
     Successfully installed/updated your WiFiCom!
 
-    Ensure you've updated secrets.py before getting started.
+    If you intend to use WiFi, ensure you've updated secrets.py
     If this is your first time:
       * Create an account and a "new WiFiCom" on wificom.dev
       * Go to "Credentials Download" on the page that appears,
@@ -255,7 +246,7 @@ def get_user_option():
     selected_option = int(input("\nSelect an option: "))
     return selected_option
 
-def get_selected_release_and_url(selected_option, device_type):
+def get_selected_release_and_url(selected_option, board_id):
     download_url = None
     selected_release = None
 
@@ -268,18 +259,18 @@ def get_selected_release_and_url(selected_option, device_type):
     elif selected_option == 3:
          [selected_release_version, selected_release] = get_latest_commit()
          selected_release_name = f"wificom-lib_{selected_release_version}"
-         download_url = get_download_url_from_commit_hash(selected_release, device_type)
+         download_url = get_download_url_from_commit_hash(selected_release, board_id)
     elif selected_option == 4:
         commit_hash = input("Enter the commit hash: ")
         [selected_release_version, selected_release] = get_specific_commit(commit_hash)
-        download_url = get_download_url_from_commit_hash(selected_release, device_type)
+        download_url = get_download_url_from_commit_hash(selected_release, board_id)
     else:
         print("Invalid option selected. Exiting.")
         sys.exit()
 
     if(selected_option <= 2):
         assets = selected_release['assets']
-        search_str = "picow" if device_type == "raspberry_pi_pico_w" else "nina"
+        search_str = "picow" if board_id == "raspberry_pi_pico_w" else "nina"
 
         for asset in assets:
             if search_str in asset['name']:
@@ -287,7 +278,7 @@ def get_selected_release_and_url(selected_option, device_type):
                 break
 
     if download_url is None:
-        print(f"No download URL found for the selected release and device type ({device_type}). Exiting.")
+        print(f"No download URL found for the selected release and device type ({board_id}). Exiting.")
         sys.exit()
 
     return selected_release, download_url
@@ -356,9 +347,8 @@ def main():
     boot_out_path = os.path.join(destination_folder, "boot_out.txt")
     board_info = read_board_info(boot_out_path)
     board_id = extract_board_id(board_info)
-    device_type = extract_device_type(board_id)
 
-    selected_release, download_url = get_selected_release_and_url(selected_option, device_type)
+    selected_release, download_url = get_selected_release_and_url(selected_option, board_id)
 
     temp_directory = tempfile.mkdtemp()
     archive_path = download_archive(download_url, os.path.join(temp_directory, selected_release.get('sha', selected_release.get('name', '')).replace('/', '_')))
@@ -366,7 +356,7 @@ def main():
     extract_all_from_archive(archive_path, extract_path)
 
     sources_json_path = os.path.join(extract_path, 'sources.json')
-    check_circuitpython_key(sources_json_path, board_id, device_type, circuitpython_version)
+    check_circuitpython_key(sources_json_path, board_id, circuitpython_version)
 
     print("Writing...")
     copy_files_to_destination(destination_folder, extract_path)
