@@ -2,6 +2,8 @@
 
 Use this tool to install your initial WiFiCom files or to update an existing WiFiCom to a newer release.  Also works for downgrading!
 
+Note: The Mac version requires the Xcode Command Line Tools. Install with `xcode-select --install`, or download from https://developer.apple.com/download/more/ (login required).
+
 ## Updating
 - Back up the files on your CIRCUITPY drive if you changed anything important. This tool aims to preserve previous WiFiCom config and only delete/overwrite specific files, but be cautious about any files you don't want to lose.
 - Put your WiFiCom into Drive Mode using the menu.
