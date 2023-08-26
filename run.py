@@ -17,6 +17,24 @@ try:
 except ImportError:
     UPDATE_TOOL_VERSION = None
 
+def do_menu(options):
+    for (number, description) in enumerate(options + ["Exit"], start=1):
+        print(str(number) + ". " + description)
+    print()
+    exit_option = len(options) + 1
+    while(True):
+        choice_text = input("Enter a number to select an option: ")
+        try:
+            choice = int(choice_text)
+        except ValueError:
+            continue
+        if choice >= 1 and choice < exit_option:
+            break
+        if choice == exit_option:
+            sys.exit()
+    print()
+    return choice
+
 def read_circuitpython_version_from_boot_out(drive_path):
     try:
         with open(os.path.join(drive_path, "boot_out.txt"), "r") as boot_out_file:
@@ -176,10 +194,7 @@ def check_circuitpython_key(sources_json_path, board_id, circuitpython_version):
     if 'circuitpython' not in sources:
         print("\nWarning: The version you are installing does not include a recommended version of CircuitPython.")
         print("Please check on Discord/GitHub for a recommended version.")
-        decision = input("Type 'Yes' to continue anyways or press Enter to exit: ").lower()
-
-        if decision != 'yes':
-            sys.exit()
+        do_menu(["Continue anyway"])
     else:
         recommended_circuitpython_version = get_recommended_circuitpython_version(sources_json_path, board_id)
 
@@ -189,17 +204,15 @@ def check_circuitpython_key(sources_json_path, board_id, circuitpython_version):
             print("It is advised to upgrade/downgrade your CircuitPython version.")
             print("You can download the necessary UF2 file from here:")
             print(uf2_url)
-            print("\n1. Download UF2 file (opens in a browser)")
-            print("2. Continue anyway with currently-installed CircuitPython version")
-            print("3. Exit")
-            selected_option = int(input("\nSelect an option: "))
+            selected_option = do_menu([
+                "Download UF2 file (opens in a browser)",
+                "Continue anyway with currently-installed CircuitPython version",
+            ])
             if selected_option == 1:
                 webbrowser.open_new_tab(uf2_url)
                 sys.exit()
-            elif selected_option == 2:
-                return
             else:
-                sys.exit()
+                return
 
 def print_welcome_message():
     if UPDATE_TOOL_VERSION is None:
@@ -237,14 +250,12 @@ def print_success_message():
     print(success)
 
 def get_user_option():
-    print("Available options:")
-    print("1. Install/Update to the latest release")
-    print("2. Install/Update to a specific release")
-    print("3. Install/Update from the latest commit hash")
-    print("4. Install/Update from a specific commit hash")
-
-    selected_option = int(input("\nSelect an option: "))
-    return selected_option
+    return do_menu([
+        "Install/Update to the latest release",
+        "Install/Update to a specific release",
+        "Install/Update from the latest commit hash",
+        "Install/Update from a specific commit hash",
+    ])
 
 def get_selected_release_and_url(selected_option, board_id):
     download_url = None
@@ -289,16 +300,9 @@ def extract_all_from_archive(archive_path, extract_path):
 
 def choose_specific_release(all_releases):
     print("\nAvailable releases:")
-    for index, release in enumerate(all_releases):
-        print(f"{index + 1}. {release['name']} ({release['tag_name']})")
-
-    selected_index = int(input("\nEnter the number of the release you want to install: ")) - 1
-
-    if 0 <= selected_index < len(all_releases):
-        return all_releases[selected_index]
-    else:
-        print("Invalid selection. Exiting.")
-        sys.exit()
+    options = [f"{release['name']} ({release['tag_name']})" for release in all_releases]
+    selected_index = do_menu(options) - 1
+    return all_releases[selected_index]
 
 def copy_files_to_destination(destination_folder, extract_path):
     src_lib_folder = os.path.join(extract_path, "lib")
