@@ -214,6 +214,20 @@ def check_circuitpython_key(sources_json_path, board_id, circuitpython_version):
             else:
                 return
 
+def check_board_config(destination_folder):
+    board_config_path = os.path.join(destination_folder, "board_config.py")
+    if not os.path.exists(board_config_path):
+        return
+    with open(board_config_path) as f:
+        board_config_text = f.read()
+    if "wificom" in board_config_text:
+        return
+    print("It looks like you have an incompatible board_config.py")
+    print("If you are using the default pins, you can safely delete it.")
+    selected_option = do_menu(["Delete board_config.py"])
+    if selected_option == 1:
+        os.remove(board_config_path)
+
 def print_welcome_message():
     if UPDATE_TOOL_VERSION is None:
         version_string = "!"
@@ -361,6 +375,8 @@ def main():
 
     sources_json_path = os.path.join(extract_path, 'sources.json')
     check_circuitpython_key(sources_json_path, board_id, circuitpython_version)
+
+    check_board_config(destination_folder)
 
     print("Writing...")
     copy_files_to_destination(destination_folder, extract_path)
