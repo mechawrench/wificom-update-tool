@@ -12,7 +12,10 @@ Note: The Mac version requires the Xcode Command Line Tools. Install with `xcode
 - If a CircuitPython upgrade/downgrade is recommended, the tool will link to the appropriate file.
   - Choose "Download UF2 file" to save the file using your web browser.
   - Eject (safely remove) the CIRCUITPY drive from your computer.
-  - On Pi Pico W, disconnect the USB / power supply, and reconnect while holding the BOOT button. On Nano RP2040 Connect, double-click the RESET button.
+  - Put the unit into bootloader mode:
+    - On Pi Pico W, disconnect the USB / power supply, and reconnect while holding the BOOT button.
+      - On Xanthos's premade units, the BOOT button is on the back. You may need a tool to press it.
+    - On Arduino Nano RP2040 Connect, double-click the RESET button.
   - Copy the UF2 file into the RPI-RP2 drive that appears.
   - Re-run the update tool and select the same option as before.
 - Wait for the update to complete.
