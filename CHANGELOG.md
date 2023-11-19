@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.0 - 2023-11-19
+
+### Added
+* Allow installation on any CircuitPython board (wificom-lib v1.1.0 can be used without WiFi)
+* Check for a board_config.py which doesn't include the word "wificom" and ask to delete it
+
+### Changed
+* Menu UI is more consistent
+
+### Fixed
+* No longer crashes on invalid menu selection
+
 ## v0.4.0 - 2023-08-12
 
 ### Added
