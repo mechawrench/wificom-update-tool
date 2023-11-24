@@ -39,7 +39,7 @@ jobs:
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
-          pip install "pyinstaller==5.13.2"
+          pip install "pyinstaller==5.12.0"
 
       - name: Build macOS Launcher Script
         if: runner.os == 'macOS'
