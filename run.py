@@ -235,7 +235,7 @@ def print_welcome_message():
         version_string = f" {UPDATE_TOOL_VERSION}!"
     else:
         version_string = f"!\n    {UPDATE_TOOL_VERSION}"
-    intro = f'''\033[32m
+    intro = f'''
     Welcome to the WiFiCom Update/Installer Tool{version_string}
 
     This script will help you update your WiFiCom by downloading the
@@ -244,11 +244,11 @@ def print_welcome_message():
     config.py, and board_config.py) will not be affected.
 
     Let's get started!
-    \033[0m'''
+    '''
     print(intro)
 
 def print_success_message():
-    success = '''\033[32m
+    success = '''
     Successfully installed/updated your WiFiCom!
 
     If you intend to use WiFi, ensure you've updated secrets.py
@@ -260,7 +260,7 @@ def print_success_message():
     Please eject (safely remove) the drive from your computer, then:
     * Full units in "Drive Mode": choose an option from the menu
     * Screenless units / "Dev Mode": disconnect and reconnect power
-    \033[0m'''
+    '''
     print(success)
 
 def get_user_option():
