@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.1 - 2023-11-27
+
+### Added
+* More help on Mac
+
+### Changed
+* Locked to pyinstaller v5
+* Renamed program folder on Mac
+
 ## v0.5.0 - 2023-11-19
 
 ### Added
