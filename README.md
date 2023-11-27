@@ -2,7 +2,11 @@
 
 Use this tool to install your initial WiFiCom files or to update an existing WiFiCom to a newer release.  Also works for downgrading!
 
-Note: The Mac version requires the Xcode Command Line Tools. Install with `xcode-select --install`, or download from https://developer.apple.com/download/more/ (login required).
+## Mac read first!
+- Use `wificom-update-tool.command`
+- Requires the Xcode Command Line Tools. Install with `xcode-select --install`, or download from https://developer.apple.com/download/more/ (login required).
+- MacOS Sonoma corrupts files on CIRCUITPY drives! Put your WiFiCom in Drive Mode first, then use this workaround before running `wificom-update-tool`:
+https://learn.adafruit.com/welcome-to-circuitpython/troubleshooting#macos-sonoma-14-dot-x-disk-errors-writing-to-circuitpy-3160304
 
 ## Updating
 - Back up the files on your CIRCUITPY drive if you changed anything important. This tool aims to preserve previous WiFiCom config and only delete/overwrite specific files, but be cautious about any files you don't want to lose.

@@ -51,12 +51,13 @@ jobs:
           echo 'pip install -r requirements.txt' >> wificom-update-tool.command
           echo 'python "run.py"' >> wificom-update-tool.command
           chmod +x wificom-update-tool.command
-          mkdir macos-package
-          cp wificom-update-tool.command macos-package/
-          cp run.py macos-package/
-          cp update_tool_version.py macos-package/
-          cp requirements.txt macos-package/
-          zip -r wificom-update-tool-macos.zip macos-package/
+          mkdir wificom-update-tool
+          cp wificom-update-tool.command wificom-update-tool/
+          cp run.py wificom-update-tool/
+          cp update_tool_version.py wificom-update-tool/
+          cp requirements.txt wificom-update-tool/
+          cp README.md wificom-update-tool/
+          zip -r wificom-update-tool-macos.zip wificom-update-tool/
 
       - name: Build Windows and Linux Executable
         if: runner.os != 'macOS'
