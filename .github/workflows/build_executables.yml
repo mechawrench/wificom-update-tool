@@ -75,7 +75,7 @@ jobs:
           fi
 
       - name: Upload as Build Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: WiFiCom-Update-Tool-${{ runner.os }}
           path: |
@@ -119,7 +119,7 @@ jobs:
           mv dist/wificom-update-installer-glibc228  wificom-update-tool-linux-glibc228
 
       - name: Upload as Build Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: WiFiCom-Update-Tool-Linux-glibc228
           path: wificom-update-tool-linux-glibc228
