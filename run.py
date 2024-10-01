@@ -336,7 +336,7 @@ def copy_files_to_destination(destination_folder, extract_path):
         src_item = os.path.join(extract_path, item)
         dst_item = os.path.join(destination_folder, item)
         if os.path.isfile(src_item):
-            if item in ('config.py', 'board_config.py'):
+            if item in ('config.py', 'board_config.py', 'digiroms.txt'):
                 if not os.path.exists(dst_item):
                     shutil.copy2(src_item, dst_item)
             else:
