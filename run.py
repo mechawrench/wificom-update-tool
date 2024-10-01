@@ -39,7 +39,7 @@ def read_circuitpython_version_from_boot_out(drive_path):
     try:
         with open(os.path.join(drive_path, "boot_out.txt"), "r") as boot_out_file:
             boot_out_content = boot_out_file.read()
-        boot_out_version = re.search(r"Adafruit CircuitPython (\d+\.\d+\.\d+) on", boot_out_content)
+        boot_out_version = re.search(r"Adafruit CircuitPython ([0-9a-z\-\.]+) on", boot_out_content)
         if boot_out_version:
             return boot_out_version.group(1)
     except FileNotFoundError:
