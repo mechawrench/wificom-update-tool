@@ -42,7 +42,6 @@ jobs:
           pip install "pyinstaller==5.13.2"
 
       - name: Build Executable
-        if: runner.os != 'macOS'
         run: |
           pip install pyinstaller
           pyinstaller --icon=wificomlogo1.ico --onefile --noupx --hidden-import=queue --name wificom-update-installer run.py
