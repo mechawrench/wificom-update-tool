@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -29,9 +29,9 @@ jobs:
           echo "UPDATE_TOOL_VERSION = '$(git describe --tags --always)'" > update_tool_version.py
 
       - name: Set up Python
-        uses: actions/setup-python@v3.1.0
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
@@ -41,26 +41,7 @@ jobs:
           fi
           pip install "pyinstaller==5.13.2"
 
-      - name: Build macOS Launcher Script
-        if: runner.os == 'macOS'
-        run: |
-          echo '#!/bin/bash' > wificom-update-tool.command
-          echo 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"' >> wificom-update-tool.command
-          echo 'cd "$SCRIPT_DIR"' >> wificom-update-tool.command
-          echo 'python -m pip install --upgrade pip' >> wificom-update-tool.command
-          echo 'pip install -r requirements.txt' >> wificom-update-tool.command
-          echo 'python "run.py"' >> wificom-update-tool.command
-          chmod +x wificom-update-tool.command
-          mkdir wificom-update-tool
-          cp wificom-update-tool.command wificom-update-tool/
-          cp run.py wificom-update-tool/
-          cp update_tool_version.py wificom-update-tool/
-          cp requirements.txt wificom-update-tool/
-          cp README.md wificom-update-tool/
-          zip -r wificom-update-tool-macos.zip wificom-update-tool/
-
-      - name: Build Windows and Linux Executable
-        if: runner.os != 'macOS'
+      - name: Build Executable
         run: |
           pip install pyinstaller
           pyinstaller --icon=wificomlogo1.ico --onefile --noupx --hidden-import=queue --name wificom-update-installer run.py
@@ -73,6 +54,9 @@ jobs:
           if [ "${{ runner.os }}" == "Linux" ]; then
             mv dist/wificom-update-installer  wificom-update-tool-linux
           fi
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            mv dist/wificom-update-installer  wificom-update-tool-macos
+          fi
 
       - name: Upload as Build Artifact
         uses: actions/upload-artifact@v4
@@ -81,7 +65,7 @@ jobs:
           path: |
             wificom-update-tool.exe
             wificom-update-tool-linux
-            wificom-update-tool-macos.zip
+            wificom-update-tool-macos
 
       - name: Attach to release
         if: github.event_name == 'release'
@@ -90,42 +74,4 @@ jobs:
           files: |
             wificom-update-tool.exe
             wificom-update-tool-linux
-            wificom-update-tool-macos.zip
-  build-linux-glibc:
-    runs-on: ubuntu-latest
-    container:
-      image: debian:buster
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2.4.2
-
-      - name: Set up Python
-        run: |
-          apt-get update
-          apt-get install -y python3 python3-pip
-          python3 -m pip install --upgrade pip
-
-      - name: Install dependencies
-        run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
-          pip install pyinstaller
-
-      - name: Build Linux Executable with lower glibc
-        run: |
-          pyinstaller --onefile --hidden-import=queue --name wificom-update-installer-glibc228 run.py
-          mv dist/wificom-update-installer-glibc228  wificom-update-tool-linux-glibc228
-
-      - name: Upload as Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: WiFiCom-Update-Tool-Linux-glibc228
-          path: wificom-update-tool-linux-glibc228
-
-      - name: Attach to release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: wificom-update-tool-linux-glibc228
+            wificom-update-tool-macos
