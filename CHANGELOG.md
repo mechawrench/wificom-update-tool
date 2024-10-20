@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.6.0 - 2024-10-20
+
+### Added
+* Build a proper executable for Mac
+
+### Changed
+* Avoid overwriting digiroms.txt (used in dev version of WiFiCom at the time of this release)
+
+### Fixed
+* Correctly detect CircuitPython beta versions etc
+* Detect additional CIRCUITPY drive location on Linux
+
 ## v0.5.1 - 2023-11-27
 
 ### Added
