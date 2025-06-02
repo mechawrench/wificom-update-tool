@@ -2,6 +2,7 @@ import ctypes
 import getpass
 import os
 import re
+import string
 
 def find_circuitpy_drive():
     if os.name == "posix":
