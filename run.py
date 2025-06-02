@@ -41,9 +41,9 @@ def print_welcome_message():
     Welcome to the WiFiCom Update/Installer Tool{version_string}
 
     This script will help you update your WiFiCom by downloading the
-    latest version of the wificom-lib and updating the files on the
-    CIRCUITPY drive. Keep in mind that your own files (secrets.py,
-    config.py, and board_config.py) will not be affected.
+    selected version of the wificom firmware and updating the files
+    on the CIRCUITPY drive. Keep in mind that your own files (secrets,
+    config, digiroms, and board_config) will not be affected.
 
     Let's get started!
     \033[0m"""
@@ -132,14 +132,14 @@ def print_success_message():
     success = """\033[32m
     Successfully installed/updated your WiFiCom!
 
-    If you intend to use WiFi, ensure you've updated secrets.py
+    If you intend to use WiFi, ensure you've updated your secrets file.
     If this is your first time:
       * Create an account and a "new WiFiCom" on wificom.dev
       * Go to "Credentials Download" on the page that appears,
         and follow the instructions there.
 
     Please eject (safely remove) the drive from your computer, then:
-    * Full units in "Drive Mode": choose an option from the menu
+    * Full units in "Drive Mode": hold the C button to reboot
     * Screenless units / "Dev Mode": disconnect and reconnect power
     \033[0m"""
     print(success)
