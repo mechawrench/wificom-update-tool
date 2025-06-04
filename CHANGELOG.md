@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.7.0 - 2025-06-03
+
+### Added
+* Support for WiFiCom 2.x
+
+### Changed
+* Significant refactoring to support future features
+
 ## v0.6.0 - 2024-10-20
 
 ### Added
