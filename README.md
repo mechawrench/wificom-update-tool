@@ -5,7 +5,7 @@ Use this tool to install your initial WiFiCom files or to update an existing WiF
 ## Mac read first!
 - Please ensure MacOS is updated to 15.2 or higher.
 - On MacOS 14.4 to 15.1, updates are slow, may cause excessive flash wear on your WiFiCom, and may have issues upgrading CircuitPython.
-- MacOS 14.0 to 14.4 will corrupt files on CIRCUITPY drives.
+- MacOS 14.0 to 14.3 will corrupt files on CIRCUITPY drives.
 
 ## Updating (WiFiCom)
 - Back up the files on your CIRCUITPY drive if you changed anything important. This tool aims to preserve previous WiFiCom config and only delete/overwrite specific files, but be cautious about any files you don't want to lose.
@@ -45,9 +45,9 @@ Use this tool to install your initial WiFiCom files or to update an existing WiF
 - Eject (safely remove) the CIRCUITPY drive from your computer.
 - Disconnect and reconnect the USB / power supply.
 
-## Exceptions (P-Com, older versions, non-bootable)
+## Exceptions (other boards, older versions, non-bootable)
 ### Making the CIRCUITPY drive writeable
-- WiFiCom (2.x) Dev Mode: connect the unit to USB while holding the main button, and keep holding until the CIRCUITPY drive appears.
+- WiFiCom (2.x) Dev Mode: connect the unit to USB while holding the C button, and keep holding until the CIRCUITPY drive appears.
 - WiFiCom (1.x) Dev Mode: connect the unit to USB while holding the C button, then release the button promptly when the LED comes on.
 ### Rebooting into normal mode (make CIRCUITPY read-only again)
 - **First** eject (safely remove) the CIRCUITPY drive from your computer.
