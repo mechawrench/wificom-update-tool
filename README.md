@@ -17,7 +17,8 @@ Use this tool to install your initial WiFiCom files or to update an existing WiF
   - Exit Drive Mode by holding the C button.
   - Put the unit into bootloader mode using the option in the Settings menu.
   - Copy the UF2 file into the RPI-RP2 drive that appears.
-  - When the WiFiCom has rebooted, put it back into drive mode, and re-run the update tool with the same option as before.
+  - When the WiFiCom has rebooted, put it back into drive mode using the menu. If you changed the major version of CircuitPython (e.g. 8.x.x to 9.x.x), the menu will not appear and the CIRCUITPY drive will already be writeable, so skip this step.
+  - Re-run the update tool with the same option as before.
 - Wait for the update to complete.
 - Eject (safely remove) the CIRCUITPY drive from your computer.
 - Exit Drive Mode by holding the C button.
