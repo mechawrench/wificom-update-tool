@@ -38,7 +38,12 @@ Use this tool to install your initial WiFiCom files or to update an existing WiF
 - Disconnect and reconnect the USB to reboot the device.
 
 ## Installing on a new build
-- Install the appropriate version of CircuitPython (see [wificom-lib](https://github.com/mechawrench/wificom-lib)). On a fresh board, the RPI-RP2 drive appears by default. Otherwise, enter bootloader mode using the instructions below.
+- Install the appropriate version of CircuitPython:
+  - Check the [wificom-lib CHANGELOG](https://github.com/mechawrench/wificom-lib/blob/main/CHANGELOG.md) for the exact version tested with each release.
+  - [Raspberry Pi Pico W](https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/raspberry_pi_pico_w/) (WiFiCom)
+  - [Raspberry Pi Pico](https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/raspberry_pi_pico/) (P-Com)
+  - [Xiao RP2040](https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/seeeduino_xiao_rp2040/) (P-Com)
+  - On a fresh board, the RPI-RP2 drive appears by default. Otherwise, enter bootloader mode using the instructions below.
 - If you are using a custom circuit layout, modify "board_config.py" from wificom-lib and save it to your CIRCUITPY drive.
 - Run the update tool and select an option.
 - Wait for the installation to complete.
